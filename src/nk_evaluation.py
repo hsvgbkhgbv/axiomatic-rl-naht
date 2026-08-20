@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # USE_CONDOR = True # toggle this to run the evaluation on condor
     USE_CONDOR = False # toggle this to run the evaluation on condor
     # base_path = USER_INFO['base_results_path']
-    base_path = "/scratch/project_2012831/naht-dev/naht_results"
+    base_path = "[The path to the base results directory]"
     
     # expt_dir = "5v6"
     # num_agents = 5
@@ -323,136 +323,24 @@ if __name__ == "__main__":
     # num_agents = 3
     # env_nickname = "mpe-pp"
 
-
-    # algorithms = [
-    #     "vdn", 
-    #     "qmix",
-    #     "iql",
-    #     "mappo",
-    #     "ippo",
-    #     # "open_train/ippo-pqvmq_aht",
-    #     # "open_train/poam-pqvmq_aht",
-    #     # "open_train/ippo-pqvmq_open",
-    #     # "open_train/poam-pqvmq_open",
-    #     # "open_train/poam-pqvmq_open",
-    #     ]
-
-    # cross_eval(expt_path=os.path.join(base_path, expt_dir),
-    #            expt_basenames=["baseline"], 
-    #            env_nickname=env_nickname,
-    #            num_agents=num_agents, 
-    #            src_config_path="src/config/open/open_eval_default.yaml",
-    #            dest_config_folder=f"src/config/temp/temp_{datetime.datetime.now().strftime('%m-%d-%H-%M-%S')}/",
-    #         #    dest_results_name="selfplay_mismatched_eval_best",
-    #            dest_results_name="open_eval_best",
-    #            algorithms=algorithms, 
-    #            num_seed_pairs=5,
-    #            eval_seed=EVAL_SEED,
-    #            load_step_type="best",
-    #            match_selfplay_seeds=True,
-    #         #    match_selfplay_seeds=False, # set to False for selfplay mismatched eval best
-    #            selfplay_ony=False, # set to True for selfplay mismatched eval best
-    #            use_condor=USE_CONDOR,
-    #            debug=DEBUG)
-
-    # target_set_eval(expt_path=os.path.join(base_path, expt_dir),
-    #                 expt_basenames=["baseline"], 
-    #                 env_nickname=env_nickname,
-    #                 num_agents=num_agents, 
-    #                 algs_to_eval=[
-    #                     # "open_train/ippo_naht1v-pqvmq_open",
-    #                     # "open_train/ippo_shapley2v_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_m120",
-    #                     # "open_train/ippo_banzhaf_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_m120",
-    #                     # "open_train/ippo_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m31",
-    #                     "open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m31",
-    #                     "open_train/ippo_naht1v-pqvmq_open",
-    #                     "open_train/ippo_shapley2v_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_m31",
-    #                               ],
-    #                 target_algs=["vdn", "qmix", "iql", "mappo", "ippo"],
-    #                 # target_algs=["vdn", "ippo"], # for ood alt train/test split
-    #                 # target_algs=["vdn", "qmix", "iql"], # for ood alt train/test split
-    #                 # target_algs=["qmix", "iql", "mappo"],
-    #                 # target_algs=["mappo", "ippo"], # for ood alt train/test split
-    #                 # target_algs=["mappo", "qmix", "iql"], # for ood alt train/test split
-    #                 # target_algs = ["vdn"],
-    #                 # algs_to_eval_seeds=["112358", "1285842", "78590", "38410", "93718"], 
-    #                 algs_to_eval_seeds=["112358", "112359", "112360", "112361", "112362"],
-    #                 # algs_to_eval_seeds=["112361", "112362"],
-    #                 # algs_to_eval_seeds=["112358"],
-    #                 # target_algs_seeds=["1285842", "78590", "38410", "93718"],# not eval on 112358 because that's the training set
-    #                 target_algs_seeds=["112358"], # for in-distribution eval
-    #                 # target_algs_seeds=["1285842", "78590", "38410", "93718"], # for alt train/test split 
-    #                 src_config_path="src/config/open/open_eval_default.yaml",
-    #                 dest_config_folder=f"src/config/temp/temp_{datetime.datetime.now().strftime('%m-%d-%H-%M-%S')}/",
-    #                 # dest_results_name="ood_generalization",
-    #                 # dest_results_name="ood_generalization_main",
-    #                 # dest_results_name="ood_generalization_temp",
-    #                 # dest_results_name="in_distr_eval",
-    #                 # dest_results_name="in_distr_eval_main",
-    #                 dest_results_name="in_distr_eval_temp",
-    #                 # dest_results_name="ood_gen_vp",
-    #                 eval_seed=EVAL_SEED,
-    #                 load_step_type="best",
-    #                 use_condor=USE_CONDOR,
-    #                 debug=DEBUG
-    #                 )
-    
-    # target_set_eval(expt_path=os.path.join(base_path, expt_dir),
-    #                 expt_basenames=["baseline"], 
-    #                 env_nickname=env_nickname,
-    #                 num_agents=num_agents, 
-    #                 algs_to_eval=[
-    #                     # "open_train/ippo_naht1v-pqvmq_open",
-    #                     # "open_train/ippo_shapley2v_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_m120",
-    #                     # "open_train/ippo_banzhaf_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_m120"
-    #                     # "open_train/ippo_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m31",
-    #                     "open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m31",
-    #                     "open_train/ippo_naht1v-pqvmq_open",
-    #                     "open_train/ippo_shapley2v_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_m31",
-    #                               ],
-    #                 target_algs=["vdn", "qmix", "iql", "mappo", "ippo"],
-    #                 # target_algs=["vdn", "ippo"], # for ood alt train/test split
-    #                 # target_algs=["vdn", "qmix", "iql"], # for ood alt train/test split
-    #                 # target_algs=["qmix", "iql", "mappo"],
-    #                 # target_algs=["mappo", "ippo"], # for ood alt train/test split
-    #                 # target_algs=["mappo", "qmix", "iql"], # for ood alt train/test split
-    #                 # target_algs = ["vdn"],
-    #                 # algs_to_eval_seeds=["112358", "1285842", "78590", "38410", "93718"], 
-    #                 algs_to_eval_seeds=["112358", "112359", "112360", "112361", "112362"],
-    #                 # algs_to_eval_seeds=["112361", "112362"],
-    #                 # algs_to_eval_seeds=["112358"],
-    #                 target_algs_seeds=["1285842", "78590", "38410", "93718"],# not eval on 112358 because that's the training set
-    #                 # target_algs_seeds=["112358"], # for in-distribution eval
-    #                 # target_algs_seeds=["1285842", "78590", "38410", "93718"], # for alt train/test split 
-    #                 src_config_path="src/config/open/open_eval_default.yaml",
-    #                 dest_config_folder=f"src/config/temp/temp_{datetime.datetime.now().strftime('%m-%d-%H-%M-%S')}/",
-    #                 # dest_results_name="ood_generalization",
-    #                 # dest_results_name="ood_generalization_main",
-    #                 dest_results_name="ood_generalization_temp",
-    #                 # dest_results_name="in_distr_eval",
-    #                 # dest_results_name="in_distr_eval_main",
-    #                 # dest_results_name="in_distr_eval_temp",
-    #                 # dest_results_name="ood_gen_vp",
-    #                 eval_seed=EVAL_SEED,
-    #                 load_step_type="best",
-    #                 use_condor=USE_CONDOR,
-    #                 debug=DEBUG
-    #                 )
-
     target_set_eval(expt_path=os.path.join(base_path, expt_dir),
                     expt_basenames=["baseline"], 
                     env_nickname=env_nickname,
                     num_agents=num_agents, 
                     algs_to_eval=[
-                        "open_train/poam-type",
-                        "open_train/poam_shapley1_type_eps0.2_vc_m150"
+                        # "open_train/ippo_naht1v-pqvmq_open",
+                        # "open_train/ippo_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
+                        # "open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
+                        "open_train/ippo_shapley2v_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7"
                                   ],
-                    target_algs=["vdn", "ippo"], # for ood alt train/test split
+                    target_algs=["vdn", "qmix", "iql", "mappo", "ippo"],
                     algs_to_eval_seeds=["112358", "112359", "112360", "112361", "112362"],
-                    target_algs_seeds=["112358", "1285842", "78590", "38410", "93718"],
+                    target_algs_seeds=["112358"], # for in-distribution eval
+                    # target_algs_seeds=["1285842", "78590", "38410", "93718"], # for alt train/test split 
                     src_config_path="src/config/open/open_eval_default.yaml",
                     dest_config_folder=f"src/config/temp/temp_{datetime.datetime.now().strftime('%m-%d-%H-%M-%S')}/",
-                    dest_results_name="type_generalization",
+                    # dest_results_name="ood_generalization",
+                    dest_results_name="in_distr_eval",
                     eval_seed=EVAL_SEED,
                     load_step_type="best",
                     use_condor=USE_CONDOR,

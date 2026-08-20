@@ -1,6 +1,4 @@
 import os
-os.chdir('/scratch/project_2012831/naht-dev')
-print (f"This is the current directory address: {os.getcwd()}")
 
 import matplotlib.pyplot as plt
 import yaml
@@ -12,7 +10,8 @@ from utils.vis_utils import plot_learning_curves, plot_learning_curves_all, \
     plot_mm_selfplay_scores, get_selfplay_scores, vis_nk_curve_all
 
 
-BASE_RES_PATH = "/scratch/project_2012831/naht-dev/naht_results"
+BASE_RES_PATH = ""
+
 # mpe-pp ood generalization result
 exp_namemap = { # format is alg log name: display name
         "poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7": "Shapley Machine",

@@ -1,6 +1,4 @@
 import os
-os.chdir('/scratch/project_2012831/naht-dev')
-print (f"This is the current directory address: {os.getcwd()}")
 
 import matplotlib.pyplot as plt
 import yaml
@@ -12,7 +10,7 @@ from utils.vis_utils import plot_learning_curves, plot_learning_curves_all, \
     plot_mm_selfplay_scores, get_selfplay_scores, vis_nk_curve_all
 
 
-BASE_RES_PATH = "/scratch/project_2012831/naht-dev/naht_results"
+BASE_RES_PATH = ""
 
 # sc2 ood generalization result
 exp_namemap = { # format is alg log name: display name
@@ -27,7 +25,6 @@ target_algs = [
     "ippo", 
     "mappo", 
 ]
-
 
 ood_results = {}
 id_results = {}
