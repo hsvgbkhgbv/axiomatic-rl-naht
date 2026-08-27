@@ -35,7 +35,7 @@ pip install torch-scatter -f https://data.pyg.org/whl/torch-2.5.0+cu121.html
 2. Install environment and repository package requirements via 
 ```
 pip install -r requirements.txt
-pip install -r env_requirement.txt
+pip install -r env_requirements.txt
 ```
 The `env_requirements.txt` will install the following environments, used in our experiments: 
 - [SMAC](https://github.com/oxwhirl/smac)
@@ -316,7 +316,7 @@ python src/main.py --env-config=sc2 --config=open/open_train_5v6_spec_n3 --alg-c
 python src/main.py --env-config=sc2 --config=open/open_train_5v6_spec_n2 --alg-config=sc2/poam_shapley with env_args.map_name=5m_vs_6m shapley_loss_coef=0.001 shaped_reward_coef=0.01 eps_clip=0.2 entropy_coef=0.05 truncated_TD_lambda=True m=31 value_loss_coef=0.5 gae_lambda=0.85 --local_results_path=5v6/open_train/poam_shapley_expC --seed=[SEED]
 ```
 
-### `variance_check.py` (independent of the eval pipeline)
+### `variance_check.py`
 Checks whether return variance is stable during **training**. It reads TensorBoard event files under each run's `tb_logs/` and plots `train_return_variance` vs. timesteps with a 95% CI band. Edit the training paths in `configs`, then:
 
 ```

@@ -7,8 +7,7 @@ import torch as th
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from controllers import AgentOwnedMAC, OpenTrainMAC, OpenTrainSpecMAC, OpenTrainMAC21
-# from controllers import AgentOwnedMAC, OpenTrainMAC
+from controllers import AgentOwnedMAC, OpenTrainMAC, OpenTrainSpecMAC
 from components.standarize_stream import RunningMeanStd
 from modules.critics import REGISTRY as critic_registry
 
