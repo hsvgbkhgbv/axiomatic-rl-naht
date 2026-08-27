@@ -1,6 +1,6 @@
 # --- IPPO specific parameters ---
 
-name: "ippo_shapley2"
+name: "ippo_shapley"
 on_policy: True
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -19,7 +19,7 @@ obs_state: False # used for mappo critic only
 obs_team_composition: False
 
 agent_output_type: "pi_logits"
-learner: "ppo_shapley_learner1"
+learner: "ppo_shapley_learner"
 agent: "rnn_norm"
 critic_type: "ippo_critic"
 

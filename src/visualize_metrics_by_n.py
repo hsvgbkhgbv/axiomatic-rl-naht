@@ -12,27 +12,27 @@ except ImportError:
     HAS_SCIPY = False
 
 # ============================================================================
-# 配置：在这里设置要处理的目录路径
+# Configuration: set the directories to process here
 # ============================================================================
-# 场景目录映射：键是场景名称，值是对应的目录路径
-# 每个目录应该包含 all_mean_performance_by_n.json 文件
+# Scenario directory map: keys are scenario names, values are directory paths.
+# Each directory should contain all_mean_performance_by_n.json.
 SCENARIO_DIRS = {
     "mpe-pp": "/scratch/project_2012831/naht-dev/naht_results/mpe-pp",
     "3sv5z": "/scratch/project_2012831/naht-dev/naht_results/3sv5z",
     "5v6": "/scratch/project_2012831/naht-dev/naht_results/5v6",
     "8v9": "/scratch/project_2012831/naht-dev/naht_results/8v9",
     "10v11": "/scratch/project_2012831/naht-dev/naht_results/10v11",
-    # 可以添加更多场景...
+    # Add more scenarios here...
 }
 
-# 指定要处理的子目录（subdir），会被拼接到SCENARIO_DIRS的每个路径后面
-# 例如: TARGET_SUBDIR = "type_generalization_poam"
-# 如果为None，则直接使用SCENARIO_DIRS中的路径
-TARGET_SUBDIR = "ood_generalization_main"  # None表示不使用子目录
+# Subdirectory appended to each path in SCENARIO_DIRS.
+# Example: TARGET_SUBDIR = "type_generalization_poam"
+# If None, use the paths in SCENARIO_DIRS as-is.
+TARGET_SUBDIR = "ood_generalization_main"  # None means no extra subdirectory
 
-# 指定要过滤的JSON数据中的子目录键（可选），如果为None则处理所有子目录
-# 例如: FILTER_SUBDIRS = ["poam_shapley1_eps0.2-vs-ippo", "poam_banzhaf_eps0.2-vs-ippo"]
-FILTER_SUBDIRS = None  # None表示处理所有子目录
+# Optional filter on JSON subdirectory keys; None means process all subdirectories.
+# Example: FILTER_SUBDIRS = ["poam_shapley1_eps0.2-vs-ippo", "poam_banzhaf_eps0.2-vs-ippo"]
+FILTER_SUBDIRS = None  # None means process all subdirectories
 
 # Algorithm name mapping (from ood_figure_type.py)
 # EXP_NAMEMAP = {
@@ -60,10 +60,10 @@ EXP_NAMEMAP = { # format is alg log name: display name
 
 # Output configuration
 # Directory for saving the figure (if None, saves to first scenario's directory)
-OUTPUT_DIR = "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"  # 例如: "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"
+OUTPUT_DIR = "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"  # e.g. "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"
 
 # Name of the output figure (if None, auto-generates based on scenario names)
-FIGURE_NAME = "ood_poam_n"  # 例如: "metric_by_n" (will be saved as "metric_by_n.pdf")
+FIGURE_NAME = "ood_poam_n"  # e.g. "metric_by_n" (saved as "metric_by_n.pdf")
 
 # Output format settings
 OUTPUT_DPI = 600  # DPI for PDF output
@@ -85,7 +85,7 @@ def load_results(json_file):
         return None
 
 def list_available_metrics(results):
-    """列出所有可用的指标"""
+    """List all available metrics."""
     metrics = set()
     for subdir, n_data in results.items():
         for n_value, metrics_data in n_data.items():
@@ -93,37 +93,37 @@ def list_available_metrics(results):
     return sorted(metrics)
 
 def list_available_subdirs(results):
-    """列出所有可用的子目录"""
+    """List all available subdirectories."""
     return sorted(results.keys())
 
 def display_metric_by_n(results, metric_name, subdirs=None):
     """
-    显示指定指标在不同n值下的平均值和95%置信区间
-    
+    Print the mean and 95% CI of a metric at each N.
+
     Args:
-        results: 从JSON文件加载的结果数据
-        metric_name: 要显示的指标名称
-        subdirs: 要显示的子目录列表，如果为None则显示所有
+        results: Results loaded from the JSON file
+        metric_name: Metric to display
+        subdirs: Subdirectories to display; None means all
     """
     if subdirs is None:
         subdirs = list_available_subdirs(results)
     
     print("\n" + "="*100)
-    print(f"指标: {metric_name}")
+    print(f"Metric: {metric_name}")
     print("="*100)
     
     for subdir in subdirs:
         if subdir not in results:
-            print(f"\n警告: 子目录 {subdir} 不存在")
+            print(f"\nWarning: subdirectory {subdir} does not exist")
             continue
         
-        print(f"\n子目录: {subdir}")
+        print(f"\nSubdirectory: {subdir}")
         print("-" * 100)
-        print(f"{'N值':<10} {'平均值':<15} {'95% CI下限':<15} {'95% CI上限':<15} {'样本数':<10} {'标准差':<15}")
+        print(f"{'N':<10} {'Mean':<15} {'95% CI lower':<15} {'95% CI upper':<15} {'Count':<10} {'Std':<15}")
         print("-" * 100)
         
         n_data = results[subdir]
-        # 按n值排序
+        # Sort by N
         for n_value in sorted(n_data.keys(), key=lambda x: int(x) if x.isdigit() else float('inf')):
             if metric_name not in n_data[n_value]:
                 continue
@@ -141,27 +141,27 @@ def display_metric_by_n(results, metric_name, subdirs=None):
 
 def display_metric_summary(results, metric_name, subdirs=None):
     """
-    以更简洁的格式显示指标摘要（仅显示平均值和置信区间）
-    
+    Print a compact metric summary (mean and confidence interval only).
+
     Args:
-        results: 从JSON文件加载的结果数据
-        metric_name: 要显示的指标名称
-        subdirs: 要显示的子目录列表，如果为None则显示所有
+        results: Results loaded from the JSON file
+        metric_name: Metric to display
+        subdirs: Subdirectories to display; None means all
     """
     if subdirs is None:
         subdirs = list_available_subdirs(results)
     
     print("\n" + "="*100)
-    print(f"指标摘要: {metric_name}")
+    print(f"Metric summary: {metric_name}")
     print("="*100)
     
     for subdir in subdirs:
         if subdir not in results:
             continue
         
-        print(f"\n子目录: {subdir}")
+        print(f"\nSubdirectory: {subdir}")
         print("-" * 100)
-        print(f"{'N值':<10} {'平均值':<15} {'95% 置信区间':<30}")
+        print(f"{'N':<10} {'Mean':<15} {'95% CI':<30}")
         print("-" * 100)
         
         n_data = results[subdir]
@@ -237,13 +237,13 @@ def get_y_label(json_file_path):
 
 def extract_algorithm_name(subdir_name):
     """
-    从子目录名称中提取算法名称（"-vs-"之前的部分）
-    
+    Extract the algorithm name from a subdirectory name (the part before "-vs-").
+
     Args:
-        subdir_name: 子目录名称，例如 "poam_banzhaf_eps0.2-vs-ippo"
-        
+        subdir_name: Subdirectory name, e.g. "poam_banzhaf_eps0.2-vs-ippo"
+
     Returns:
-        algorithm_name: 算法名称，例如 "poam_banzhaf_eps0.2"
+        algorithm_name: Algorithm name, e.g. "poam_banzhaf_eps0.2"
     """
     if '-vs-' in subdir_name:
         return subdir_name.split('-vs-')[0]
@@ -251,28 +251,28 @@ def extract_algorithm_name(subdir_name):
 
 def merge_results_by_algorithm(results, metric_name):
     """
-    按算法合并结果（提取"-vs-"之前的算法名，合并相同算法的数据）
-    
+    Merge results by algorithm (use the name before "-vs-", then pool matching algorithms).
+
     Args:
-        results: 原始结果字典
-        metric_name: 指标名称
-        
+        results: Original results dictionary
+        metric_name: Metric name
+
     Returns:
-        merged_data: 合并后的数据，格式为 {algorithm_name: {n_value: {mean, ci_lower, ci_upper, values}}}
+        merged_data: {algorithm_name: {n_value: {mean, ci_lower, ci_upper, values}}}
     """
     merged_data = {}
     
     for subdir, n_data in results.items():
-        # 提取算法名称
+        # Extract the algorithm name
         alg_name = extract_algorithm_name(subdir)
         
-        # 使用映射表获取显示名称，如果没有映射则使用原始名称
+        # Map to a display name, or keep the original name if unmapped
         display_name = EXP_NAMEMAP.get(alg_name, alg_name)
         
         if display_name not in merged_data:
             merged_data[display_name] = {}
         
-        # 合并每个n值的数据
+        # Merge data for each N
         for n_value, metrics_data in n_data.items():
             if metric_name not in metrics_data:
                 continue
@@ -282,11 +282,11 @@ def merge_results_by_algorithm(results, metric_name):
                     'values': []
                 }
             
-            # 合并所有值
+            # Pool all values
             metric_stats = metrics_data[metric_name]
             merged_data[display_name][n_value]['values'].extend(metric_stats['values'])
     
-    # 计算合并后的统计量
+    # Compute merged statistics
     for alg_name in merged_data:
         for n_value in merged_data[alg_name]:
             values = merged_data[alg_name][n_value]['values']
@@ -295,37 +295,20 @@ def merge_results_by_algorithm(results, metric_name):
                 std = np.std(values, ddof=1) if len(values) > 1 else 0.0
                 count = len(values)
                 
-                # 计算68%置信区间
-                # 如果每个值基于N_SAMPLES_PER_SEED个样本，需要考虑层次结构
-                if N_SAMPLES_PER_SEED is not None and N_SAMPLES_PER_SEED > 1:
-                    # 使用分层统计：考虑每个均值基于的样本数
-                    # 标准误差 = sqrt(组间方差/n_groups + 组内方差/(n_groups * n_samples_per_group))
-                    # 这里我们使用简化的方法：调整标准误差以考虑每个值基于多个样本
-                    # 实际标准误差应该考虑组内和组间方差，但这里我们使用保守估计
-                    if HAS_SCIPY and count > 1:
-                        t_critical = scipy_stats.t.ppf(0.84, df=count-1)  # 0.84 = (1 + 0.68) / 2
-                    else:
-                        t_critical = 1.0  # 使用标准正态分布近似（68%置信区间）
-                    
-                    # 标准误差：考虑每个值基于N_SAMPLES_PER_SEED个样本
-                    # 这里使用组间标准误差（seeds之间的变异）
-                    standard_error = std / np.sqrt(count)
-                    margin = t_critical * standard_error
+                # 95% CI: t_{0.975, df} * SEM, or 1.96 * SEM without scipy
+                if HAS_SCIPY and count > 1:
+                    t_critical = scipy_stats.t.ppf(0.975, df=count-1)
                 else:
-                    # 标准情况：每个值就是原始观测值
-                    if HAS_SCIPY and count > 1:
-                        t_critical = scipy_stats.t.ppf(0.84, df=count-1)  # 0.84 = (1 + 0.68) / 2
-                    else:
-                        t_critical = 1.0  # 使用标准正态分布近似（68%置信区间）
-                    
-                    standard_error = std / np.sqrt(count)
-                    margin = t_critical * standard_error
+                    t_critical = 1.96
+                
+                standard_error = std / np.sqrt(count)
+                margin = t_critical * standard_error
                 
                 merged_data[alg_name][n_value]['mean'] = mean
                 merged_data[alg_name][n_value]['std'] = std
                 merged_data[alg_name][n_value]['count'] = count
-                merged_data[alg_name][n_value]['ci_68_lower'] = mean - margin
-                merged_data[alg_name][n_value]['ci_68_upper'] = mean + margin
+                merged_data[alg_name][n_value]['ci_95_lower'] = mean - margin
+                merged_data[alg_name][n_value]['ci_95_upper'] = mean + margin
     
     return merged_data
 
@@ -410,15 +393,14 @@ def perform_t_tests(merged_data, scenario_name):
                 mean1 = np.mean(data1)
                 mean2 = np.mean(data2)
                 
-                # Get 68% confidence intervals for both algorithms
-                ci1_lower = merged_data[alg1][n_value]['ci_68_lower']
-                ci1_upper = merged_data[alg1][n_value]['ci_68_upper']
-                ci2_lower = merged_data[alg2][n_value]['ci_68_lower']
-                ci2_upper = merged_data[alg2][n_value]['ci_68_upper']
+                # Get 95% confidence intervals for both algorithms
+                ci1_lower = merged_data[alg1][n_value]['ci_95_lower']
+                ci1_upper = merged_data[alg1][n_value]['ci_95_upper']
+                ci2_lower = merged_data[alg2][n_value]['ci_95_lower']
+                ci2_upper = merged_data[alg2][n_value]['ci_95_upper']
                 
-                # Check if 68% CIs overlap
-                # If CIs don't overlap, it suggests potential significance
-                # Note: Non-overlapping 68% CIs roughly correspond to ~p < 0.05 for normal distributions
+                # Check if 95% CIs overlap
+                # Non-overlapping 95% CIs is a conservative significance check
                 ci_overlap = not (ci1_upper < ci2_lower or ci2_upper < ci1_lower)
                 
                 # Determine significance based on p-value
@@ -435,19 +417,19 @@ def perform_t_tests(merged_data, scenario_name):
                     sig = ""
                     sig_text = "Not Significant (p >= 0.05)"
                 
-                # Determine significance based on 68% CI overlap
+                # Determine significance based on 95% CI overlap
                 if not ci_overlap:
-                    ci_sig_text = "Significant (68% CIs do not overlap)"
+                    ci_sig_text = "Significant (95% CIs do not overlap)"
                 else:
-                    ci_sig_text = "Not Significant (68% CIs overlap)"
+                    ci_sig_text = "Not Significant (95% CIs overlap)"
                 
                 print(f"  {alg1} vs {alg2}:")
                 print(f"    Mean1: {mean1:.6f} (n={len(data1)}), Mean2: {mean2:.6f} (n={len(data2)})")
-                print(f"    68% CI1: [{ci1_lower:.6f}, {ci1_upper:.6f}]")
-                print(f"    68% CI2: [{ci2_lower:.6f}, {ci2_upper:.6f}]")
+                print(f"    95% CI1: [{ci1_lower:.6f}, {ci1_upper:.6f}]")
+                print(f"    95% CI2: [{ci2_lower:.6f}, {ci2_upper:.6f}]")
                 print(f"    t-statistic: {t_stat:.6f}, p-value: {p_value:.6f} {sig}")
                 print(f"    Statistical Significance (t-test): {sig_text}")
-                print(f"    Statistical Significance (68% CI): {ci_sig_text}")
+                print(f"    Statistical Significance (95% CI): {ci_sig_text}")
         
         print()
     
@@ -552,8 +534,8 @@ def plot_multiple_scenarios(scenario_data_dict, target_subdirs=None, output_file
                 scenario_n_values.add(n_val)
                 
                 mean = alg_data[n_value]['mean']
-                ci_lower = alg_data[n_value]['ci_68_lower']
-                ci_upper = alg_data[n_value]['ci_68_upper']
+                ci_lower = alg_data[n_value]['ci_95_lower']
+                ci_upper = alg_data[n_value]['ci_95_upper']
                 
                 means.append(mean)
                 errors_lower.append(mean - ci_lower)

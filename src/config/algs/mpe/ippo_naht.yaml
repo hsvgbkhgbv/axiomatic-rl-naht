@@ -1,6 +1,6 @@
 # --- IPPO specific parameters ---
 
-name: "ippo"
+name: "ippo-naht"
 on_policy: True
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -20,7 +20,7 @@ obs_team_composition: False
 
 agent_output_type: "pi_logits"
 learner: "ppo_learner"
-agent: rnn_norm
+agent: "rnn_norm"
 critic_type: "ippo_critic"
 
 entropy_coef: 0.05

@@ -5,7 +5,6 @@ from .ac_ns import ACCriticNS
 from .ippo import IPPOCritic
 from .ippo_ns import IPPOCriticNS
 from .poam import POAMCritic
-from .poam_shapley1 import POAMShapleyCritic1
 
 REGISTRY = {}
 
@@ -16,6 +15,3 @@ REGISTRY["ac_critic_ns"] = ACCriticNS
 REGISTRY["ippo_critic"] = IPPOCritic
 REGISTRY["ippo_critic_ns"] = IPPOCriticNS
 REGISTRY["poam_critic"] = POAMCritic
-REGISTRY["poam_shapley_critic1"] = POAMShapleyCritic1
-
-

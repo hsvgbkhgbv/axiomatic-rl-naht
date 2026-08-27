@@ -8,17 +8,13 @@ import numpy as np
 from scipy.interpolate import interp1d
 from matplotlib import rcParams
 
-# ========= 参数 =========
+# ========= Parameters =========
 configs = [
     ({
-        # "mpe-pp": [
-        #     "naht_results/mpe-pp/open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
-        #     "naht_results/mpe-pp/open_train/poam-pqvmq_open",
-        # ],
         "5v6": [
-            "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_m31",
-            "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_m15_n4",
-            "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_m7_n3"
+            "naht_results/5v6/open_train/poam_shapley_expA",
+            "naht_results/5v6/open_train/poam_shapley_expB",
+            "naht_results/5v6/open_train/poam_shapley_expC"
         ],
     }, "./plots")
 ]
@@ -89,11 +85,11 @@ def interpolate_seeds(df, step_range, kind="nearest"):
 
 
 def normalize_method_name(method):
-    if "m31" in method:
+    if "expA" in method:
         return "Exp A"
-    if "m15_n4" in method:
+    if "expB" in method:
         return "Exp B"
-    if "m7_n3" in method:
+    if "expC" in method:
         return "Exp C"
     return method
 
@@ -102,18 +98,6 @@ def build_squared_curve(df_interp):
     sq_df = df_interp.copy()
     sq_df["value_sq"] = sq_df["value"] ** 2
     return sq_df
-
-
-def add_visual_offset(sq_df):
-    # Visualization-only offsets to separate overlapping lines.
-    offset_map = {
-        "3 Agents": -0.12,
-        "4 Agents": 0.00,
-        "5 Agents": 0.12,
-    }
-    out = sq_df.copy()
-    out["value_sq_plot"] = out["value_sq"] + out["method"].map(offset_map).fillna(0.0)
-    return out
 
 
 sns.set(style="darkgrid")

@@ -50,7 +50,7 @@ eval_mode: null # Evaluate model for test_nepisode episodes and quit (no trainin
 local_results_path: 5v6/open_train/poam-pqvmq_open # Relative path to save local results
 
 # --- agents to load ---
-spec_n_agents: 4 # number of agents to train on
+spec_n_agents: 3 # max number of agents to sample from the uncontrolled agent team
 n_uncontrolled: null # number of uncontrolled agents to sample and add to trained agent team. null means to sample uniformly
 trained_agents:
   agent_0:

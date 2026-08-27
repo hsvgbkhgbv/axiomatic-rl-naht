@@ -9,9 +9,7 @@ from .ppo_learner import PPOLearner
 from .poam_learner import POAMLearner
 from .poam_learner_trial import POAMLearnerTrial
 from .poam_shapley_learner import POAMShapleyLearner
-from .poam_shapley_learner1 import POAMShapleyLearner1
-from .poam_shapley_learner1_noed import POAMShapleyLearner1NoED
-from .ppo_shapley_learner1 import PPOShapleyLearner1
+from .ppo_shapley_learner import PPOShapleyLearner
 
 REGISTRY = {}
 REGISTRY["q_learner"] = QLearner
@@ -25,6 +23,4 @@ REGISTRY["pac_dcg_learner"] = PACDCGLearner
 REGISTRY["poam_learner"] = POAMLearner
 REGISTRY["poam_learner_trial"] = POAMLearnerTrial
 REGISTRY["poam_shapley_learner"] = POAMShapleyLearner
-REGISTRY["poam_shapley_learner1"] = POAMShapleyLearner1
-REGISTRY["poam_shapley_learner1_noed"] = POAMShapleyLearner1NoED
-REGISTRY["ppo_shapley_learner1"] = PPOShapleyLearner1
+REGISTRY["ppo_shapley_learner"] = PPOShapleyLearner

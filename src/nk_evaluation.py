@@ -329,9 +329,9 @@ if __name__ == "__main__":
                     num_agents=num_agents, 
                     algs_to_eval=[
                         # "open_train/ippo_naht1v-pqvmq_open",
-                        # "open_train/ippo_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
-                        # "open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
-                        "open_train/ippo_shapley2v_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7"
+                        # "open_train/ippo_banzhaf_m7",
+                        # "open_train/poam_banzhaf_m7",
+                        "open_train/ippo_shapley_m7"
                                   ],
                     target_algs=["vdn", "qmix", "iql", "mappo", "ippo"],
                     algs_to_eval_seeds=["112358", "112359", "112360", "112361", "112362"],

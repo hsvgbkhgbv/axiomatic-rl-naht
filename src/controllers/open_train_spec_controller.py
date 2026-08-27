@@ -97,16 +97,14 @@ class OpenTrainSpecMAC:
         if self.n_uncontrolled is None: # sample n_uncontrolled uniformly from 1 to n_agents-1
             # n_uncontrolled = np.random.randint(1, self.n_agents)
             # NOTE: Manually define the number of uncontrolled agents for the spec experiments
-            n_uncontrolled = np.random.randint(1, self.args.spec_n_agents)
+            n_uncontrolled = np.random.randint(1, self.args.spec_n_agents+1)
         else:
             n_uncontrolled = self.n_uncontrolled
         # sample uncontrolled agent team
         active_uncontrolled_team = np.random.choice(list(self.uncontrolled_agent_teams.keys()))            
         # self.uncontrolled_agent_pool = self.uncontrolled_agent_teams[active_uncontrolled_team]
         # NOTE: fix the total set of agents
-        self.uncontrolled_agent_pool = self.uncontrolled_agent_teams[active_uncontrolled_team][:self.args.spec_n_agents]
-        # print (f"This is the number of len(self.uncontrolled_agent_pool): {len(self.uncontrolled_agent_pool)}")
-        # print (f"This is the number of n_uncontrolled: {n_uncontrolled}")
+        self.uncontrolled_agent_pool = self.uncontrolled_agent_teams[active_uncontrolled_team][:self.args.spec_n_agents+1]
         uncontrolled_agent_idxs = list(np.random.choice(len(self.uncontrolled_agent_pool), 
                                                      n_uncontrolled, 
                                                      replace=False))

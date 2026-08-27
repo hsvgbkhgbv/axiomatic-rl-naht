@@ -1,4 +1,5 @@
-name: "poam_shapley1"
+
+name: "poam_shapley"
 on_policy: True
 action_selector: "soft_policies"
 mask_before_softmax: True
@@ -15,13 +16,13 @@ obs_agent_id: True
 obs_last_action: True # POAM requires encoder to obs agents' last actions
 obs_state: False # required for mappo critic
 obs_individual_obs: False # used for cv_critic only
+obs_team_composition: False 
 
 agent_output_type: "pi_logits"
-
-learner: "poam_shapley_learner1"
+learner: "poam_shapley_learner"
 mac: "agent_owned_mac"
-agent: rnn_poam
-critic_type: "poam_shapley_critic1"
+agent: "rnn_poam"
+critic_type: "poam_critic"
 
 # poam only
 
@@ -31,7 +32,7 @@ ed_grad_norm_clip: 5
 ed_model_uncontrolled_only: False # if True, model both controlled and uncontrolled
 
 ed_epochs: 1
-n_ed_minibatch: 1
+n_ed_minibatch: 1 # 2
 n_ed_hidden_layers: 1
 ed_hidden_dim: 64
 embed_dim: 64
@@ -44,7 +45,7 @@ use_gae: True # if False, use n-step returns
 gae_lambda: 0.95
 q_nstep: 5 # 1 corresponds to normal r + gammaV
 
-shapley_loss_coef: 0.01 # the best coef to now is 0.01
+shapley_loss_coef: 0.01 # the best coef to now is 0.01 / 0.001 for large number of agents
 value_loss_coef: 0.5
 shaped_reward_coef: 1.0
 shaped_reward_coef_anneal: False
@@ -54,13 +55,13 @@ shapley_loss_coef_anneal: False
 shapley_loss_coef_start: 0.001
 shapley_loss_coef_end: 0.01
 truncated_TD_lambda: False # valid only if use_gae=True
-m: 10 # horizon of the truncated TD(lambda) above
+m: 10 # horizon of the truncated TD(lambda) above / This is required to investigate deeply
 reverse_geometric_distr: False
 average_value_diff: False 
 
 epochs: 5
 n_minibatch: 1
-eps_clip: 0.1
+eps_clip: 0.1 # possibly useful to increase to 0.2/0.3 when the number of agents increases
 lr: 0.0005
 optim_alpha: 0.99
 optim_eps: .00001

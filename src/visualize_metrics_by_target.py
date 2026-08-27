@@ -12,28 +12,28 @@ except ImportError:
     HAS_SCIPY = False
 
 # ============================================================================
-# 配置：在这里设置要处理的目录路径
+# Configuration: set the directories to process here
 # ============================================================================
-# 场景目录映射：键是场景名称，值是对应的目录路径
-# 每个目录应该包含 all_mean_performance_by_n.json 文件
+# Scenario directory map: keys are scenario names, values are directory paths.
+# Each directory should contain all_mean_performance_by_n.json.
 SCENARIO_DIRS = {
     "mpe-pp": "/scratch/project_2012831/naht-dev/naht_results/mpe-pp",
     "3sv5z": "/scratch/project_2012831/naht-dev/naht_results/3sv5z",
     "5v6": "/scratch/project_2012831/naht-dev/naht_results/5v6",
     "8v9": "/scratch/project_2012831/naht-dev/naht_results/8v9",
     "10v11": "/scratch/project_2012831/naht-dev/naht_results/10v11",
-    # 可以添加更多场景...
+    # Add more scenarios here...
 }
 
-# 指定要处理的子目录（subdir），会被拼接到SCENARIO_DIRS的每个路径后面
-# 例如: TARGET_SUBDIR = "type_generalization_poam"
-# 如果为None，则直接使用SCENARIO_DIRS中的路径
-# TARGET_SUBDIR = "ood_generalization_main"  # None表示不使用子目录
+# Subdirectory appended to each path in SCENARIO_DIRS.
+# Example: TARGET_SUBDIR = "type_generalization_poam"
+# If None, use the paths in SCENARIO_DIRS as-is.
+# TARGET_SUBDIR = "ood_generalization_main"  # None means no extra subdirectory
 TARGET_SUBDIR = "type_generalization_ippo"
 
-# 指定要过滤的JSON数据中的子目录键（可选），如果为None则处理所有子目录
-# 例如: FILTER_SUBDIRS = ["poam_shapley1_eps0.2-vs-ippo", "poam_banzhaf_eps0.2-vs-ippo"]
-FILTER_SUBDIRS = None  # None表示处理所有子目录
+# Optional filter on JSON subdirectory keys; None means process all subdirectories.
+# Example: FILTER_SUBDIRS = ["poam_shapley1_eps0.2-vs-ippo", "poam_banzhaf_eps0.2-vs-ippo"]
+FILTER_SUBDIRS = None  # None means process all subdirectories
 
 # Algorithm name mapping (from ood_figure_type.py)
 EXP_NAMEMAP = {
@@ -61,12 +61,12 @@ EXP_NAMEMAP = {
 
 # Output configuration
 # Directory for saving the figure (if None, saves to first scenario's directory)
-OUTPUT_DIR = "/scratch/project_2012831/naht-dev/plots-naht/iclr-rebuttal"  # 例如: "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"
+OUTPUT_DIR = "/scratch/project_2012831/naht-dev/plots-naht/iclr-rebuttal"  # e.g. "/scratch/project_2012831/naht-dev/plots-naht/5trials-95ci"
 
 # Figure name prefix (the part before target algorithm name in the filename)
 # Final filename will be: {FIGURE_NAME_PREFIX}_{target_algorithm}_by_n.pdf
 # For example: "target_ippo_by_n.pdf" if FIGURE_NAME_PREFIX = "target"
-FIGURE_NAME_PREFIX = "type_ippo"  # 例如: "target", "ood", "type", etc.
+FIGURE_NAME_PREFIX = "type_ippo"  # e.g. "target", "ood", "type", etc.
 
 # Output format settings
 OUTPUT_DPI = 600  # DPI for PDF output
@@ -176,7 +176,7 @@ def merge_results_by_eval_algorithm(results, metric_name, target_algorithm):
         target_algorithm: Target algorithm name (e.g., "ippo")
         
     Returns:
-        merged_data: Merged data, format: {eval_algorithm: {n_value: {mean, ci_68_lower, ci_68_upper, values}}}
+        merged_data: Merged data, format: {eval_algorithm: {n_value: {mean, ci_95_lower, ci_95_upper, values}}}
     """
     merged_data = {}
     
@@ -218,11 +218,11 @@ def merge_results_by_eval_algorithm(results, metric_name, target_algorithm):
                 std = np.std(values, ddof=1) if len(values) > 1 else 0.0
                 count = len(values)
                 
-                # Calculate 68% confidence interval
+                # 95% CI: t_{0.975, df} * SEM, or 1.96 * SEM without scipy
                 if HAS_SCIPY and count > 1:
-                    t_critical = scipy_stats.t.ppf(0.84, df=count-1)  # 0.84 = (1 + 0.68) / 2
+                    t_critical = scipy_stats.t.ppf(0.975, df=count-1)
                 else:
-                    t_critical = 1.0  # Standard normal approximation for 68% CI
+                    t_critical = 1.96
                 
                 standard_error = std / np.sqrt(count)
                 margin = t_critical * standard_error
@@ -230,8 +230,8 @@ def merge_results_by_eval_algorithm(results, metric_name, target_algorithm):
                 merged_data[alg_name][n_value]['mean'] = mean
                 merged_data[alg_name][n_value]['std'] = std
                 merged_data[alg_name][n_value]['count'] = count
-                merged_data[alg_name][n_value]['ci_68_lower'] = mean - margin
-                merged_data[alg_name][n_value]['ci_68_upper'] = mean + margin
+                merged_data[alg_name][n_value]['ci_95_lower'] = mean - margin
+                merged_data[alg_name][n_value]['ci_95_upper'] = mean + margin
     
     return merged_data
 
@@ -364,8 +364,8 @@ def plot_all_targets_grouped(scenario_data_dict):
                     scenario_n_values.add(n_val)
                     
                     mean = alg_data[n_value]['mean']
-                    ci_lower = alg_data[n_value]['ci_68_lower']
-                    ci_upper = alg_data[n_value]['ci_68_upper']
+                    ci_lower = alg_data[n_value]['ci_95_lower']
+                    ci_upper = alg_data[n_value]['ci_95_upper']
                     
                     means.append(mean)
                     errors_lower.append(mean - ci_lower)

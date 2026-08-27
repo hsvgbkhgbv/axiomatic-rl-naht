@@ -1,23 +1,13 @@
 # code heavily adapted from original ePymarl implementation, based on the MAPPO implementation.
-import os
+import copy
 import numpy as np
-import math
 from components.episode_buffer import EpisodeBatch
-import torch as th
-import torch.nn.functional as F
-from torch.optim import Adam
-
-from controllers import AgentOwnedMAC, OpenTrainMAC, OpenTrainSpecMAC, OpenTrainMAC21
-# from controllers import AgentOwnedMAC, OpenTrainMAC
-from components.standarize_stream import RunningMeanStd
-from modules.critics import REGISTRY as critic_registry
-
-from utils.encoder_decoder import Encoder, Decoder, \
-      get_encoder_input_shape, get_decoder_input_shape, \
-      get_decoder_target_shape, build_encoder_inputs, \
-      build_decoder_inputs, build_decoder_targets
 from utils.mappo_util import huber_loss
 from utils.rl_utils import compute_per_agent_terminated_mask, get_noop_act
+import torch as th
+from torch.optim import Adam
+from modules.critics import REGISTRY as critic_registry
+from components.standarize_stream import RunningMeanStd
 
 
 class PramScheduler:
@@ -62,59 +52,29 @@ class PramScheduler:
         return float(pram)
 
 
-class POAMShapleyLearner1:
+class PPOShapleyLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
         self.n_agents = args.n_agents
         self.n_actions = args.n_actions
         self.logger = logger
 
-        # create actors
         self.mac = mac
         self.agent_params = list(mac.parameters())
         self.agent_optimiser = Adam(params=self.agent_params, 
                                     lr=args.lr,
-                                    eps=self.args.optim_eps # term added for numerical stability
+                                    eps=self.args.optim_eps # term added to denom for numerical stability
                                     )
-        # create critics
+
         self.critic = critic_registry[args.critic_type](scheme, args) # ac_critic by default
 
         self.critic_params = list(self.critic.parameters())
         self.critic_optimiser = Adam(params=self.critic_params, lr=args.lr,
                                      eps=self.args.optim_eps
                                      )
-        # create encoder decoders
-        # we do not initialize encoder/decoder inside actor/critic because 
-        # (1) both modules need access to the encoder 
-        # (2) we want separate optimizers for the encoder/decoder and the actor/critic
-        self.encoder_input_shape = get_encoder_input_shape(scheme)
-        self.decoder_target_shape = get_decoder_target_shape(self.n_agents, scheme)
-        self.encoder = Encoder(args=self.args, 
-                               input_dim=self.encoder_input_shape,
-                               hidden_dim=args.ed_hidden_dim, 
-                               output_dim=args.embed_dim)
-        self.decoder = Decoder(args=self.args, 
-                               input_dim=get_decoder_input_shape(self.n_agents, args.embed_dim), 
-                               hidden_dim=args.ed_hidden_dim, 
-                               output_dim1=self.decoder_target_shape[0], 
-                               output_dim2=self.decoder_target_shape[1]
-                               )
-        self.ed_params = list(self.encoder.parameters()) + list(self.decoder.parameters())
-        self.encoder_decoder_optimiser = Adam(params=self.ed_params, 
-                                              lr=args.ed_lr, eps=self.args.optim_eps
-                                              )
-        # give actor critic access to encoder/decoder
-        if isinstance(self.mac, AgentOwnedMAC):
-            self.mac.agent.encoder = self.encoder
-        elif isinstance(self.mac, (OpenTrainMAC, OpenTrainSpecMAC, OpenTrainMAC21)):
-        # elif isinstance(self.mac, OpenTrainMAC):
-            self.mac.set_encoder(self.encoder)
-        else:
-            raise Exception("ERROR: mac type {} not implemented for POAM".format(type(self.mac)))
-        self.critic.encoder = self.encoder
 
         self.log_stats_t = 0
-        self.log_extra_stats_t = 0
+
         device = "cuda" if args.use_cuda else "cpu"
         if self.args.standardise_rewards:
             self.rew_ms = RunningMeanStd(shape=(1,), device=device)
@@ -122,9 +82,6 @@ class POAMShapleyLearner1:
         self.value_normalizer = self.critic.value_normalizer
 
         self.noop_acts = get_noop_act(args, device)
-
-        self.extra_stats_path = os.path.join(args.local_results_path, "data", args.expt_logname)
-        os.makedirs(self.extra_stats_path, exist_ok=True)
 
         if self.args.shaped_reward_coef_anneal:
             self.shaped_reward_coef_gen = PramScheduler(pram_start=self.args.shaped_reward_coef_start, pram_end=self.args.shaped_reward_coef_end, max_epochs=self.args.t_max, schedule="cosine")
@@ -166,35 +123,34 @@ class POAMShapleyLearner1:
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :-1]
         # batch[terminated] has shape (bs, ep_len + 1, 1)
-        max_t = batch['terminated'].shape[1] - 1
+        max_t = batch["terminated"].shape[1] - 1
         actor_mask = self.compute_mask(batch, max_t=max_t)
         critic_mask = actor_mask.detach().clone()
-        ed_mask = actor_mask.detach().clone()
+
         if self.args.open_train_or_eval:
-            # in batch[trainable_agents], 1 means trainable, 0 means untrainable
-            if self.args.ed_model_uncontrolled_only:
-                ed_mask = ed_mask * (~batch["trainable_agents"][:, :max_t].squeeze(-1))
-            else: 
-                ed_mask = ed_mask * batch["trainable_agents"][:, :max_t].squeeze(-1)
             if self.args.trainable_agents_mask_actor:
                 actor_mask = actor_mask * batch["trainable_agents"][:, :max_t].squeeze(-1)
             if self.args.trainable_agents_mask_critic:
-              critic_mask = critic_mask * batch["trainable_agents"][:, :max_t].squeeze(-1)
+                critic_mask = critic_mask * batch["trainable_agents"][:, :max_t].squeeze(-1)
         if self.args.standardise_rewards:
             self.rew_ms.update(rewards)
             rewards = (rewards - self.rew_ms.mean) / th.sqrt(self.rew_ms.var)
+
         ##################################
         # Compute old values, targets, and advantages
         old_values, old_critic_hidden_states = self.critic_forward_nograd(self.critic, batch)
-        old_values = old_values[:, :-1].squeeze(3) # shape = (bs, ts, n)
+        old_values = old_values[:, :-1].squeeze(3)
         old_critic_hidden_states = old_critic_hidden_states
 
+        # target_returns = self.compute_target_returns(self.critic, 
+        #                                              batch, old_critic_hidden_states, 
+        #                                              rewards).clone().detach()
         target_returns, shapley_target_returns, shaped_rewards = self.compute_target_returns(self.critic, 
                                                                     batch, old_critic_hidden_states, 
                                                                     rewards)
         target_returns = target_returns.clone().detach()
         shapley_target_returns = shapley_target_returns.clone().detach()
-        
+
         if self.value_normalizer:
             self.value_normalizer.update(target_returns)
             denorm_old_values = self.value_normalizer.denormalize(old_values)
@@ -211,15 +167,21 @@ class POAMShapleyLearner1:
         # Compute old log probs
         old_log_prob_taken, _ = self.actor_forward_all(self.mac, batch, actions)
         old_log_prob_taken = old_log_prob_taken.clone().detach()
-
-        #################################
+        ##################################
         actor_train_stats = {
             "actor_loss": [],
             "actor_grad_norm": [],
             "entropy": [],
-            "log_pi_taken": [],
+            # "pi_max": [],
             "ratio": [],
         }
+        # critic_train_stats = {
+        #     "critic_loss": [],
+        #     "critic_grad_norm": [],
+        #     "td_error_abs": [],
+        #     "target_mean": [],
+        #     "curr_taken_v": [],
+        # }
         critic_train_stats = {
             "critic_loss": [],
             "critic_grad_norm": [],
@@ -229,72 +191,46 @@ class POAMShapleyLearner1:
             "value_loss": [],
             "shapley_loss": []
         }
-        encoder_decoder_train_stats = {
-            "ed_obs_loss": [],
-            "ed_act_loss": [],
-            "ed_loss": [],
-            "ed_grad_norm": [],
-        }
 
-        # perform encoder-decoder update
-        if t_env <= self.args.ed_pretrain_ts:
-            print(f"Training ED only. t_env is {t_env}")
-            for _ in range(self.args.ed_pretrain_epochs):
-                encoder_decoder_train_stats = self.encoder_decoder_update(batch=batch,
-                                                                        mask=ed_mask,
-                                                                        encoder_decoder_train_stats=encoder_decoder_train_stats,
-                                                                        t_env=t_env
-                                                                        )
-        else: 
-            print(f"Switching from updating ED only to updating all. t_env is {t_env}")
+        # perform PPO updates
+        for _ in range(self.args.epochs):
+            # generate randomized minibatches across batch dim only (preserve temporal structure)
+            mb_rand = th.randperm(batch.batch_size).numpy() 
+            mb_size = batch.batch_size // self.args.n_minibatch
+            sampler = [np.array(mb_rand[i * mb_size:(i + 1) * mb_size]) for i in range(self.args.n_minibatch)]
 
-            # perform PPO update
-            for _ in range(self.args.epochs):
-                # generate randomized minibatches across batch dim only (preserve temporal structure)
-                mb_rand = th.randperm(batch.batch_size).numpy() 
-                mb_size = batch.batch_size // self.args.n_minibatch
-                sampler = [np.array(mb_rand[i * mb_size:(i + 1) * mb_size]) for i in range(self.args.n_minibatch)]
-                old_ed_hidden, old_critic_hidden = old_critic_hidden_states
-
-                for indices in sampler:             
-                    log_pi_taken, entropy = self.actor_forward_all(self.mac, batch[indices], actions[indices])
-                    curr_v = self.critic_forward_all(self.critic, 
-                                                    batch[indices], 
-                                                    hidden_states=(old_ed_hidden[indices], old_critic_hidden[indices]))
-                    curr_v = curr_v[:, :-1].squeeze(3)
-                    ##################################
-                    actor_train_stats = self.actor_update(log_pi_taken=log_pi_taken, 
-                                                        entropy=entropy, 
-                                                        advantages=advantages[indices],
-                                                        old_log_prob_taken=old_log_prob_taken[indices], 
-                                                        mask=actor_mask[indices],
-                                                        actor_train_stats=actor_train_stats,
+            for indices in sampler:             
+                # compute curr values, log probs, entropies   
+                log_pi_taken, entropy = self.actor_forward_all(self.mac, batch[indices], actions[indices])
+                curr_v = self.critic_forward_all(self.critic, 
+                                                batch[indices], 
+                                                hidden_states=old_critic_hidden_states[indices])
+                curr_v = curr_v[:, :-1].squeeze(3)
+                
+                ###################################
+                actor_train_stats = self.actor_update(log_pi_taken=log_pi_taken, 
+                                                      entropy=entropy, 
+                                                      advantages=advantages[indices],
+                                                      old_log_prob_taken=old_log_prob_taken[indices], 
+                                                      mask=actor_mask[indices], 
+                                                      actor_train_stats=actor_train_stats,
+                                                      )
+                critic_train_stats = self.critic_update(curr_values=curr_v,
+                                                        old_values=old_values[indices], 
+                                                        target_returns=target_returns[indices],
+                                                        shapley_target_returns=shapley_target_returns[indices],
+                                                        mask=critic_mask[indices], 
+                                                        critic_train_stats=critic_train_stats
                                                         )
-                    critic_train_stats = self.critic_update(curr_values=curr_v,
-                                                            old_values=old_values[indices], 
-                                                            target_returns=target_returns[indices],
-                                                            shapley_target_returns=shapley_target_returns[indices],
-                                                            mask=critic_mask[indices], 
-                                                            critic_train_stats=critic_train_stats
-                                                            )
-                    ###################################
-                    encoder_decoder_train_stats = self.encoder_decoder_update(batch=batch[indices],
-                                                                              mask=ed_mask[indices],
-                                                                              encoder_decoder_train_stats=encoder_decoder_train_stats,
-                                                                              t_env=t_env
-                                                                              )
 
         # logging
         if t_env - self.log_stats_t >= self.args.learner_log_interval or self.log_stats_t == 0:
-            ts_logged = len(critic_train_stats["critic_loss"]) if len(critic_train_stats["critic_loss"]) > 0 else 1
+            ts_logged = len(critic_train_stats["critic_loss"])
             for key in critic_train_stats:
                 self.logger.log_stat(key, sum(critic_train_stats[key]) / ts_logged, t_env)
-            ts_logged = len(actor_train_stats["actor_loss"]) if len(actor_train_stats["actor_loss"]) > 0 else 1
+            ts_logged = len(actor_train_stats["actor_loss"])
             for key in actor_train_stats:
                 self.logger.log_stat(key, sum(actor_train_stats[key]) / ts_logged, t_env)
-            ts_logged = len(encoder_decoder_train_stats["ed_loss"]) if len(encoder_decoder_train_stats["ed_loss"]) > 0 else 1
-            for key in encoder_decoder_train_stats:
-                self.logger.log_stat(key, sum(encoder_decoder_train_stats[key]) / ts_logged, t_env)
 
             self.logger.log_stat("old_values_mean", old_values.mean().item(), t_env)
             self.logger.log_stat("advantage_mean", advantages.mean().item(), t_env)
@@ -310,99 +246,6 @@ class POAMShapleyLearner1:
             reshaped.append(batch.reshape(bs * max_t, -1))
         return tuple(reshaped)
     
-    def encoder_decoder_update(self, batch, mask, encoder_decoder_train_stats, t_env):
-        # build targets corresponding to other agents' obs and act
-        # mask targ masks controlled agents in the encoder-decoder *targets*
-        obs_targ, act_targ_onehot, mask_targ = build_decoder_targets(n_agents=self.n_agents, 
-                                    batch=batch, mask=mask, 
-                                    t=None, 
-                                    concat_agents=False,
-                                    concat_obs_act=False)
-
-        
-        obs_targ = obs_targ[:, :-1].detach()
-        act_targ_onehot = act_targ_onehot[:, :-1].detach()
-        # build inputs to encoder
-        encoder_input = build_encoder_inputs(n_agents=self.n_agents,
-                                             batch=batch, t=None, concat_obs_act=True)
-        encoder_input = encoder_input[:, :-1]
-
-        for _ in range(self.args.ed_epochs):
-            # generate randomized minibatches across batch dim only (preserve temporal structure)
-            mb_rand = th.randperm(batch.batch_size).numpy() 
-            mb_size = batch.batch_size // self.args.n_ed_minibatch
-            sampler = [np.array(mb_rand[i * mb_size:(i + 1) * mb_size]) for i in range(self.args.n_ed_minibatch)]
-
-            for indices in sampler:
-                encoder_input_mb = encoder_input[indices]
-                obs_targ_mb, act_targ_onehot_mb = obs_targ[indices], act_targ_onehot[indices]
-
-                embeddings = self.encoder.forward_all(encoder_input_mb)                      
-                decoder_inputs = build_decoder_inputs(embeddings) 
-                decoded_obs, decoded_act_logits = self.decoder(decoder_inputs)
-                
-                # evaluate likelihood of actions taken by other agents under the decoder
-                decoded_act_logits = decoded_act_logits.view(mb_size, -1 , self.n_agents,
-                                                             self.n_agents - 1, self.n_actions)
-                act_targ_onehot_mb = act_targ_onehot_mb.view(mb_size, -1, self.n_agents,
-                                                             self.n_agents - 1, self.n_actions)
-                # convert act target from onehot back to labels
-                act_targ_mb = th.argmax(act_targ_onehot_mb, dim=-1)
-                log_prob, _ = self.mac.action_selector.eval_action(agent_inputs=decoded_act_logits,
-                                                                   actions=act_targ_mb)
-                # compute loss
-                if self.args.ed_model_uncontrolled_only:
-                    obs_mask_mb = mask_targ[indices]
-                    act_mask_mb = mask_targ[indices]
-                else:
-                    obs_mask_mb = mask[indices].unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 1, self.n_agents - 1, 1)
-                    act_mask_mb = mask[indices].unsqueeze(-1)
-                
-                log_prob = log_prob.unsqueeze(-1)
-                act_mask_mb = mask_targ[indices]
-                
-                if self.args.ed_bce_loss:
-                    obs_loss = (F.binary_cross_entropy(decoded_obs, obs_targ_mb, reduction='none') * obs_mask_mb).sum() / obs_mask_mb.sum()
-                else:
-                    obs_loss = (F.mse_loss(decoded_obs, obs_targ_mb, reduction='none') * obs_mask_mb).sum() / obs_mask_mb.sum()
-
-                act_loss = (-log_prob * act_mask_mb).sum() / act_mask_mb.sum()
-                loss = (obs_loss + act_loss)
-                
-                self.encoder_decoder_optimiser.zero_grad()
-                loss.backward()
-                grad_norm = th.nn.utils.clip_grad_norm_(self.ed_params, self.args.ed_grad_norm_clip)
-                self.encoder_decoder_optimiser.step()
-
-                ##########################
-                encoder_decoder_train_stats['ed_obs_loss'].append(obs_loss.item())
-                encoder_decoder_train_stats['ed_act_loss'].append(act_loss.item())
-                encoder_decoder_train_stats['ed_loss'].append(loss.item())
-                encoder_decoder_train_stats['ed_grad_norm'].append(grad_norm.item())
-        
-        # log the last minibatch of the following tensors for debugging purposes
-        if self.args.save_extra_stats and (t_env - self.log_extra_stats_t >= self.args.save_model_interval or self.log_extra_stats_t == 0):
-            print("Saving extra stats at t_env", t_env)
-            log_path = os.path.join(self.extra_stats_path, str(t_env))
-            os.makedirs(log_path, exist_ok=True)
-            log_tensors = {
-                # inputs
-                "encoder_input": encoder_input_mb.cpu().numpy(),
-                "embeddings": embeddings.cpu().detach().numpy(),
-                "decoder_inputs": decoder_inputs.cpu().detach().numpy(),
-                # decoded
-                "decoded_obs": decoded_obs.cpu().detach().numpy(),
-                "decoded_act_logits": decoded_act_logits.cpu().detach().numpy(),
-                # targets
-                "obs_targ": obs_targ_mb.cpu().numpy(),
-                "act_targ_onehot": act_targ_onehot_mb.cpu().numpy(),
-                # needed to compute the loss
-                "mask": mask[indices].cpu().numpy(),
-            }
-            np.savez_compressed(os.path.join(log_path, "ed_tensors"), **log_tensors) 
-            self.log_extra_stats_t = t_env
-        return encoder_decoder_train_stats
-    
     def actor_update(self, log_pi_taken, entropy, 
                      advantages, old_log_prob_taken, 
                      mask, actor_train_stats, 
@@ -417,13 +260,12 @@ class POAMShapleyLearner1:
         old_log_prob_taken = old_log_prob_taken.reshape(mb * max_t, -1)[rand]
         mask = mask.reshape(mb * max_t, -1)[rand]
         ###################################
-        # PPO LOSS
+
         ratios = th.exp(log_pi_taken - old_log_prob_taken)
         surr1 = ratios * advantages  
         surr2 = th.clamp(ratios, 1.0 - self.args.eps_clip, 1.0 + self.args.eps_clip) * advantages        
         actor_loss = -((th.min(surr1, surr2) + self.args.entropy_coef * entropy) * mask).sum() / mask.sum()
 
-        ###################################
         # Optimise agents
         self.agent_optimiser.zero_grad()
         actor_loss.backward()
@@ -433,31 +275,27 @@ class POAMShapleyLearner1:
         actor_train_stats["actor_loss"].append(actor_loss.item())
         actor_train_stats["actor_grad_norm"].append(grad_norm.item())
         mask_elems = mask.sum().item()
-        actor_train_stats["entropy"].append(entropy.mean().item())
-        actor_train_stats["log_pi_taken"].append(log_pi_taken.mean().item())
+        actor_train_stats["entropy"].append((entropy*mask).sum().item() / mask_elems)
         actor_train_stats["ratio"].append((ratios * mask).sum().item() / mask_elems)
         return actor_train_stats
 
     @th.no_grad()
     def critic_forward_nograd(self, critic, batch): 
         v = []
-        h_e, h = critic.init_hidden()
+        h = critic.init_hidden()
         critic_hidden_states = []
-        ed_hidden_states = []
         for t in range(batch.max_seq_length):
-            ed_hidden_states.append(h_e)
             critic_hidden_states.append(h)
-            v_t, h_e, h = critic.forward(batch, (h_e, h.detach()), t=t)
+            v_t, h = critic.forward(batch, h.detach(), t=t)
             v.append(v_t)
         v = th.cat(v, dim=1)  # Concat over time
-        ed_hidden_states = th.cat(ed_hidden_states, dim=1)
         critic_hidden_states = th.cat(critic_hidden_states, dim=1)
-        return v, (ed_hidden_states, critic_hidden_states)
+        return v, critic_hidden_states
     
     def critic_forward_all(self, critic, batch, hidden_states):
         '''Compute values using given hidden states, 
         for all timesteps in a single forward pass.'''
-        v, _, _ = critic.forward(batch, hidden_states, t=None)
+        v, _ = critic.forward(batch, hidden_states, t=None)
         return v
 
     def actor_forward_all(self, mac, batch, actions):
@@ -476,15 +314,16 @@ class POAMShapleyLearner1:
         before any updates (i.e. at time data was gathered)
         '''
         # TODO: remove extra critic call 
-        with th.no_grad(): 
+        with th.no_grad():
             target_vals = self.critic_forward_all(critic, batch, hidden_states=old_critic_hidden_states)
-            target_vals = target_vals.squeeze(3) # shape = (bs, ts, n)
+            target_vals = target_vals.squeeze(3)
 
         target_mask = self.compute_mask(batch, max_t=batch['terminated'].shape[1])
         if self.value_normalizer is not None:
             target_vals = self.value_normalizer.denormalize(target_vals)
 
         if self.args.use_gae:
+            # target_returns = self.gae_target(rewards, target_mask, target_vals)
             if self.args.truncated_TD_lambda:
                 target_returns, shaped_rewards = self.gae_target_truncated(rewards, target_mask, target_vals)
                 # NOTE: Add Shapley constraints
@@ -496,6 +335,7 @@ class POAMShapleyLearner1:
         else:
             target_returns = self.nstep_returns(rewards, target_mask, target_vals, self.args.q_nstep)
         
+        # return target_returns # shape (batch_size, episode_length, n_agents)
         return target_returns, shapley_target_returns, shaped_rewards # shape (batch_size, episode_length, n_agents)
 
     def critic_update(self, curr_values, old_values,
@@ -521,7 +361,6 @@ class POAMShapleyLearner1:
                                                         self.args.eps_clip)
         shapley_clipped_v = shapley_old_values + (shapley_curr_values - shapley_old_values).clamp(-self.args.eps_clip, 
                                                         self.args.eps_clip)
-        
 
         td_error = (target_returns - curr_values)
         clipped_td_error = (target_returns - clipped_v)
@@ -542,7 +381,7 @@ class POAMShapleyLearner1:
         if self.args.clip_value_loss:
             loss = th.max(loss, clipped_loss)
             shapley_loss = th.max(shapley_loss, shapley_clipped_loss)
-        
+
         loss = (loss * mask).sum() / mask.sum()
         # NOTE: Attention to the shapley_loss that is with the last dim as 1
         shapley_loss = (shapley_loss * mask).sum() / mask.sum()
@@ -555,6 +394,7 @@ class POAMShapleyLearner1:
         grad_norm = th.nn.utils.clip_grad_norm_(self.critic_params, self.args.grad_norm_clip)
         self.critic_optimiser.step()
 
+        # critic_train_stats["critic_loss"].append(loss.item())
         critic_train_stats["critic_loss"].append(total_loss.item())
         critic_train_stats["critic_grad_norm"].append(grad_norm.item())
         critic_train_stats["value_loss"].append(loss.item())
@@ -604,7 +444,7 @@ class POAMShapleyLearner1:
             values_diff = (values_prec * agent_mask * mask_prec).sum(dim=3) - self.args.gamma * (values_succ * agent_mask * mask_succ).sum(dim=3)
         rewards = rewards + self.shaped_reward_coef * values_diff
         return rewards
-
+    
     def gae_target(self, rewards, mask, values):
         # Returns is computed as the GAE +V_pi(s_t), which is equivalent to the TD lambda return
         # V_pi(s_t) = Q_pi(s_t, pi(s_t)) = A^GAE_pi(s_t, pi(s_t)) + V_pi(s_t)
@@ -622,14 +462,14 @@ class POAMShapleyLearner1:
             gae = delta + self.args.gamma * self.args.gae_lambda * mask[:, step + 1] * gae
             returns.append((gae + values[:, step]).unsqueeze(1)) # list of len 52
         returns = th.flip(th.cat(returns, axis=1), dims=[1])
-        return returns[:, :T], rewards
+        return returns[:, :T]
 
     def gae_target_truncated(self, rewards, mask, values):
         rewards = self.shape_rewards(rewards, mask, values) # shape = (bs, ts, n)
         rewards = rewards * mask[:, :-1] # shape = (bs, ts, n)
         values = values * mask # shape = (bs, ts+1, n)
         return self.td_lambda_truncated(rewards, values), rewards
-
+    
     def shapley_target(self, rewards, mask, values):
         # Returns is computed as the GAE +V_pi(s_t), which is equivalent to the TD lambda return
         # V_pi(s_t) = Q_pi(s_t, pi(s_t)) = A^GAE_pi(s_t, pi(s_t)) + V_pi(s_t)
@@ -643,11 +483,11 @@ class POAMShapleyLearner1:
             returns.append((gae + values[:, step].sum(dim=1, keepdims=True)).unsqueeze(1)) # list of len 52
         returns = th.flip(th.cat(returns, axis=1), dims=[1])
         return returns[:, :T]
-
+    
     def shapley_target_truncated(self, rewards, mask, values):
         values = (values * mask).sum(dim=2, keepdims=True) # shape = (bs, ts, 1)
         return self.td_lambda_truncated(rewards, values)
-
+    
     def td_lambda_truncated(
         self,
         rewards: th.Tensor,   # (B, T, n)
@@ -703,22 +543,16 @@ class POAMShapleyLearner1:
         # 9) Mix & sum over k → (B, T, n)
         G_lambda = (G_n * w).sum(dim=2)
         return G_lambda
-
+    
     def cuda(self):
         self.mac.cuda()
         self.critic.cuda()
-        self.encoder.cuda()
-        self.decoder.cuda()
 
     def save_models(self, path):
         self.mac.save_models(path)
         th.save(self.critic.state_dict(), "{}/critic.th".format(path))
-        th.save(self.encoder.state_dict(), "{}/encoder.th".format(path))
-        th.save(self.decoder.state_dict(), "{}/decoder.th".format(path))
-
         th.save(self.agent_optimiser.state_dict(), "{}/agent_opt.th".format(path))
         th.save(self.critic_optimiser.state_dict(), "{}/critic_opt.th".format(path))
-        th.save(self.encoder_decoder_optimiser.state_dict(), "{}/encoder_decoder_opt.th".format(path))
 
     def load_models(self, path):
         self.mac.load_models(path)
@@ -727,8 +561,3 @@ class POAMShapleyLearner1:
             th.load("{}/agent_opt.th".format(path), map_location=lambda storage, loc: storage))
         self.critic_optimiser.load_state_dict(
             th.load("{}/critic_opt.th".format(path), map_location=lambda storage, loc: storage))
-
-        self.encoder.load_state_dict(th.load("{}/encoder.th".format(path), map_location=lambda storage, loc: storage))
-        self.decoder.load_state_dict(th.load("{}/decoder.th".format(path), map_location=lambda storage, loc: storage))
-        self.encoder_decoder_optimiser.load_state_dict(
-            th.load("{}/encoder_decoder_opt.th".format(path), map_location=lambda storage, loc: storage))

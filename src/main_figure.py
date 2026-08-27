@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing import event_accumulator
 import numpy as np
-from matplotlib import rcParams
+from scipy.interpolate import interp1d
 
 
 configs = [
@@ -49,115 +49,6 @@ configs = [
 }, "./plots-naht"),
 ]
 
-# scalar tags
-
-def smooth_dataframe(df, y_col="mean", ema_alpha=0.3):
-    """
-    对每个 method 的指定列进行 EMA 平滑。
-    ema_alpha 越小，平滑效果越强。
-    """
-    return (
-        df.sort_values("step")
-          .groupby(["method", "seed"])
-          .apply(lambda g: g.assign(
-              smoothed=g[y_col].ewm(alpha=ema_alpha, adjust=False).mean()
-          ))
-          .reset_index(drop=True)
-    )
-
-# --------- 工具函数 ---------
-def find_all_event_files(tb_log_dir):
-    if not os.path.isdir(tb_log_dir):
-        return []
-    event_files = []
-    for subdir in os.listdir(tb_log_dir):
-        subdir_path = os.path.join(tb_log_dir, subdir)
-        if os.path.isdir(subdir_path):
-            found = glob.glob(os.path.join(subdir_path, "events.out.tfevents.*"))
-            if found:
-                event_files.append(found[0])
-    return event_files
-
-def extract_scalar_data(event_file, tags):
-    ea = event_accumulator.EventAccumulator(event_file)
-    try:
-        ea.Reload()
-    except:
-        return {tag: [] for tag in tags}
-    data = {}
-    for tag in tags:
-        if tag in ea.Tags().get('scalars', []):
-            data[tag] = [(e.step, e.value) for e in ea.Scalars(tag)]
-        else:
-            data[tag] = []
-    return data
-
-from scipy.interpolate import interp1d
-def interpolate_seeds(df, step_range, kind="nearest"):
-    """
-    对每个 method + seed 曲线插值到统一 step
-    kind: 'linear', 'nearest', 'cubic', 'quadratic'...
-    """
-    all_interp = []
-
-    for (method, seed), group in df.groupby(["method", "seed"]):
-        group = group.sort_values("step")
-        if len(group) < 2:
-            continue  # 无法插值
-
-        try:
-            interp_func = interp1d(
-                group["step"],
-                group["value"],
-                kind=kind,
-                bounds_error=False,
-                fill_value=np.nan  # 避免外推
-            )
-            interp_vals = interp_func(step_range)
-        except ValueError:
-            # 比如 cubic 插值点太少会失败
-            continue
-
-        interp_df = pd.DataFrame({
-            "step": step_range,
-            "value": interp_vals,
-            "method": method,
-            "seed": seed
-        })
-        all_interp.append(interp_df)
-
-    return pd.concat(all_interp, ignore_index=True)
-
-def select(interp_df):
-    max_values = interp_df.groupby(['method', 'seed'])['smoothed'].max().reset_index()
-
-    # 分别处理方法 a 和 方法 b
-    top5_a = (
-        max_values[max_values['method'] == 'Shapley Machine']
-        .sort_values('smoothed', ascending=False)
-        .head(5)
-    )
-    # top5_c = (
-    #     max_values[max_values['method'] == 'Shapley Machine 3']
-    #     .sort_values('smoothed', ascending=False)
-    #     .head(5)
-    # )
-
-    bottom5_b = (
-        max_values[max_values['method'] == 'POAM']
-        .sort_values('smoothed', ascending=True)
-        .head(5)
-    )
-
-    # 合并两个方法的 top/bottom 结果
-    selected_seeds = pd.concat([top5_a, bottom5_b])
-
-    # 用筛选出的 method 和 seed 过滤原始数据
-    filtered_df = interp_df.merge(selected_seeds[['method', 'seed']], on=['method', 'seed'])
-    return filtered_df
-
-sns.set(style="darkgrid")
-
 scalar_data_mode = [
     ({
     "test_return": "test_return_mean",
@@ -177,18 +68,96 @@ scalar_data_mode = [
 
 ema_alpha = 1 - 0.95
 
+def smooth_dataframe(df, y_col="mean", ema_alpha=0.3):
+    """
+    Apply EMA smoothing to the specified column for each method.
+    A smaller ema_alpha produces stronger smoothing.
+    """
+    return (
+        df.sort_values("step")
+          .groupby(["method", "seed"])
+          .apply(lambda g: g.assign(
+              smoothed=g[y_col].ewm(alpha=ema_alpha, adjust=False).mean()
+          ))
+          .reset_index(drop=True)
+    )
+
+# --------- Utility functions ---------
+def find_all_event_files(tb_log_dir):
+    if not os.path.isdir(tb_log_dir):
+        return []
+    event_files = []
+    for subdir in os.listdir(tb_log_dir):
+        subdir_path = os.path.join(tb_log_dir, subdir)
+        if os.path.isdir(subdir_path):
+            found = glob.glob(os.path.join(subdir_path, "events.out.tfevents.*"))
+            if found:
+                event_files.append(found[0])
+    return event_files
+
+def extract_scalar_data(event_file, tags):
+    ea = event_accumulator.EventAccumulator(event_file)
+    try:
+        ea.Reload()
+    except Exception:
+        return {tag: [] for tag in tags}
+    data = {}
+    for tag in tags:
+        if tag in ea.Tags().get('scalars', []):
+            data[tag] = [(e.step, e.value) for e in ea.Scalars(tag)]
+        else:
+            data[tag] = []
+    return data
+
+def interpolate_seeds(df, step_range, kind="nearest"):
+    """
+    Interpolate each method-and-seed curve onto a common step range.
+    kind: 'linear', 'nearest', 'cubic', 'quadratic'...
+    """
+    all_interp = []
+
+    for (method, seed), group in df.groupby(["method", "seed"]):
+        group = group.sort_values("step")
+        if len(group) < 2:
+            continue  # Insufficient data for interpolation
+
+        try:
+            interp_func = interp1d(
+                group["step"],
+                group["value"],
+                kind=kind,
+                bounds_error=False,
+                fill_value=np.nan  # Avoid extrapolation
+            )
+            interp_vals = interp_func(step_range)
+        except ValueError:
+            # Cubic interpolation, for example, fails with too few points.
+            continue
+
+        interp_df = pd.DataFrame({
+            "step": step_range,
+            "value": interp_vals,
+            "method": method,
+            "seed": seed
+        })
+        all_interp.append(interp_df)
+
+    return pd.concat(all_interp, ignore_index=True)
+
+sns.set(style="darkgrid")
+
 for scalar_tags, mode in scalar_data_mode:
     for experiment_config,output_dir in configs:
         
         os.makedirs(output_dir, exist_ok=True)
         fig, axes = plt.subplots(1, 5, figsize=(25, 5)) 
         
-        # 收集所有图中存在的算法
+        # Collect the algorithms present across all panels.
         all_existing_methods = set()
         for map_name, paths in experiment_config.items():
             for path in paths:
                 method = os.path.basename(path)
-                # 应用相同的算法名称映射
+                # Apply the same algorithm-name mapping used for plotting.
                 if 'poam-pqvmq' in method:
                     method = 'POAM'
                 elif 'ippo_naht1v-pqvmq' in method or 'ippo_naht-pqvmq' in method:
@@ -205,7 +174,7 @@ for scalar_tags, mode in scalar_data_mode:
         
         i = 0
         for map_name, paths in experiment_config.items():
-            ax = axes[i]  # 每次使用一个子图
+            ax = axes[i]  # Use one subplot for each environment
             print(f"\n📍 Processing environment: {map_name}")
             data_by_plot = {key: [] for key in scalar_tags}
 
@@ -230,7 +199,7 @@ for scalar_tags, mode in scalar_data_mode:
                                 "seed": ef
                             })
 
-            # 确定该场景应该显示哪个scalar_tag
+            # Select the scalar appropriate for this environment.
             key_to_plot = None
             if map_name == "mpe-pp":
                 if "test_return" in data_by_plot and data_by_plot["test_return"]:
@@ -264,49 +233,14 @@ for scalar_tags, mode in scalar_data_mode:
                 i += 1
                 continue
             
-            # 处理数据插值和平滑
-            # if map_name == "8v9":
-            if map_name == "":
-                expected_max_step = 17500000
+            # Align all curves onto a common timestep grid.
+            step_min = int(df["step"].min())
+            step_max = int(df["step"].max())
+            step_interval = int((step_max + 1 - step_min) / 400)
+            step_range = np.arange(step_min, step_max + 1, step_interval)
+            df_interp = interpolate_seeds(df, step_range)
 
-                # 找出每个 method-seed 组合的最大 step
-                step_counts = df.groupby(["method", "seed"])["step"].max().reset_index()
-                # 只保留那些最大 step >= expected_max_step 的组合
-                valid_combinations = step_counts[step_counts["step"] >= expected_max_step][["method", "seed"]]
-                valid_combinations = df.merge(valid_combinations, on=["method", "seed"], how="inner")
-                
-                step_min = int(valid_combinations["step"].min())
-                step_max = int(valid_combinations["step"].max())
-                step_interval = int((step_max + 1 - step_min) / 400)
-                step_range = np.arange(step_min, step_max + 1, step_interval)
-
-                valid_combinations_interp = interpolate_seeds(valid_combinations, step_range)
-                
-                less_valid_combinations = step_counts[step_counts["step"] < expected_max_step][["method", "seed"]]
-                less_valid_combinations = df.merge(less_valid_combinations, on=["method", "seed"], how="inner")
-                
-                step_range = np.arange(step_min, expected_max_step, step_interval)
-
-                less_valid_combinations_interp = interpolate_seeds(less_valid_combinations, step_range)
-                
-                df_interp = pd.concat([valid_combinations_interp, less_valid_combinations_interp], ignore_index=True)
-                
-                seed_max_steps = df_interp.groupby(['method', 'seed'])['step'].max().reset_index()
-                seed_max_steps.columns = ['method', 'seed', 'max_step']
-            else:
-                # 统计每个 (method, seed) 的最大 step
-                seed_max_steps = df.groupby(['method', 'seed'])['step'].max().reset_index()
-                seed_max_steps.columns = ['method', 'seed', 'max_step']
-                
-                # === 对齐所有曲线 ===
-                step_min = int(df["step"].min())
-                step_max = int(df["step"].max())
-                step_interval = int((step_max + 1 - step_min) / 400)
-                step_range = np.arange(step_min, step_max + 1, step_interval)
-
-                df_interp = interpolate_seeds(df, step_range)
-
-            # === 平滑处理 ===
+            # Apply smoothing.
             df_interp_smooth = smooth_dataframe(df_interp, y_col="value", ema_alpha=ema_alpha)
             
             df_interp_smooth.loc[df_interp_smooth['method'].str.contains('poam-pqvmq'), 'method'] = 'POAM'
@@ -317,25 +251,25 @@ for scalar_tags, mode in scalar_data_mode:
             df_interp_smooth.loc[df_interp_smooth['method'].str.contains('ippo_banzhaf'), 'method'] = 'BM-IPPO'
             df_interp_smooth.loc[df_interp_smooth['method'].str.contains('poam_banzhaf'), 'method'] = 'BM-POAM'
             
-            # 定义所有可能的算法列表和固定颜色，确保颜色一致性
+            # Use a fixed method list and palette for consistent colors.
             all_methods = ['POAM', 'IPPO-NAHT', 'SM-POAM', 'SM-IPPO', 'BM-POAM', 'BM-IPPO']
             method_colors = {
-                'POAM': '#1f77b4',      # 蓝色
-                'IPPO-NAHT': '#ff7f0e',      # 橙色
-                'SM-POAM': '#2ca02c',   # 绿色
-                'SM-IPPO': '#d62728',   # 红色
-                'BM-IPPO': '#9467bd',    # 紫色
-                'BM-POAM': '#8c564b'     # 棕色
+                'POAM': '#1f77b4',       # Blue
+                'IPPO-NAHT': '#ff7f0e',  # Orange
+                'SM-POAM': '#2ca02c',    # Green
+                'SM-IPPO': '#d62728',    # Red
+                'BM-IPPO': '#9467bd',    # Purple
+                'BM-POAM': '#8c564b'     # Brown
             }
             
-            # 为每个算法添加空数据点（如果不存在），确保颜色一致性
+            # Add placeholders for absent methods to preserve color assignments.
             existing_methods = list(df_interp_smooth['method'].unique())
             
-            # 为右边图（10v11）添加所有存在的算法，为其他图只添加预定义算法
+            # The final panel includes only methods present in at least one panel.
             methods_to_add = all_existing_methods if map_name == "10v11" else all_methods
             for method in methods_to_add:
                 if method not in existing_methods:
-                    # 添加一个空的数据点，这样算法会出现在图例中并保持颜色一致性
+                    # A NaN placeholder adds the method to the legend without drawing data.
                     empty_row = pd.DataFrame({
                         'step': [0],
                         'value': [np.nan],
@@ -345,25 +279,22 @@ for scalar_tags, mode in scalar_data_mode:
                     })
                     df_interp_smooth = pd.concat([df_interp_smooth, empty_row], ignore_index=True)
             
-            # 确保数据按预定义的方法顺序排序
+            # Sort methods in the predefined order.
             df_interp_smooth['method_order'] = df_interp_smooth['method'].map({method: i for i, method in enumerate(all_methods)})
             df_interp_smooth = df_interp_smooth.sort_values('method_order')
             
             print(f"Scene: {map_name}, Methods found: {existing_methods}") 
 
-            # print(df_interp_smooth)
-            # df_interp_smooth = select(df_interp_smooth)
-            # print(df_interp_smooth)
             sns.lineplot(
                 data=df_interp_smooth,
                 x="step",
                 y="smoothed",
                 hue="method",
-                hue_order=all_methods,  # 使用预定义的算法顺序
-                palette=method_colors,  # 使用固定的颜色映射
+                hue_order=all_methods,  # Use the predefined method order
+                palette=method_colors,  # Use the fixed color mapping
                 errorbar=('ci', 95),     # std deviation
-                estimator="mean",  # 求 mean
-                err_style="band",  # 默认就是带状阴影
+                estimator="mean",  # Compute the mean
+                err_style="band",  # Display uncertainty as a shaded band
                 linewidth=2,
                 ax=ax
             )
@@ -385,7 +316,7 @@ for scalar_tags, mode in scalar_data_mode:
                 else:
                     ax.set_ylabel(None)
                 if map_name == "10v11":
-                    # 显示所有图中存在的算法在图例中
+                    # Show all methods present across the figure in the final legend.
                     handles, labels = ax.get_legend_handles_labels()
                     filtered_handles = []
                     filtered_labels = []
@@ -407,7 +338,7 @@ for scalar_tags, mode in scalar_data_mode:
                 else:   
                     ax.set_ylabel(None)
                 if map_name == "10v11":
-                    # 显示所有图中存在的算法在图例中
+                    # Show all methods present across the figure in the final legend.
                     handles, labels = ax.get_legend_handles_labels()
                     filtered_handles = []
                     filtered_labels = []
@@ -426,7 +357,7 @@ for scalar_tags, mode in scalar_data_mode:
                 else:   
                     ax.set_ylabel(None)
                 if map_name == "10v11":
-                    # 显示所有图中存在的算法在图例中
+                    # Show all methods present across the figure in the final legend.
                     handles, labels = ax.get_legend_handles_labels()
                     filtered_handles = []
                     filtered_labels = []
@@ -445,7 +376,7 @@ for scalar_tags, mode in scalar_data_mode:
                 else:   
                     ax.set_ylabel(None)
                 if map_name == "10v11":
-                    # 显示所有图中存在的算法在图例中
+                    # Show all methods present across the figure in the final legend.
                     handles, labels = ax.get_legend_handles_labels()
                     filtered_handles = []
                     filtered_labels = []
@@ -459,7 +390,7 @@ for scalar_tags, mode in scalar_data_mode:
                 ax.set_title(map_name, fontsize=fontsize, color='black')
                 ax.set_xlabel("Timesteps", fontsize=fontsize, color='black')
             
-            i += 1  # 处理完一个场景的所有scalar_tags后递增索引
+            i += 1  # Advance after processing one environment.
 
         plt.tight_layout()
 

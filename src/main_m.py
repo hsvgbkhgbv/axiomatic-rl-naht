@@ -8,63 +8,34 @@ import numpy as np
 from matplotlib import rcParams
 from scipy.stats import t     # NEW
 
-configs = [(
-    # {
-    # "mpe-pp": [
-    #     "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7",
-    #     "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.0_eps0.2_m7",
-    #     "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.0_sl0.01_eps0.2_m7",
-    #     "naht_results/mpe-pp/open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
-    #     "naht_results/mpe-pp/open_train/poam-pqvmq_open"
-    #     ]},
-    # {
-    # "5v6": [
-    #     "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_avg_m31",
-    #     "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.0_eps0.1_avg_m31",
-    #     "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.0_sl0.001_eps0.1_avg_m31",
-    #     "naht_results/5v6/open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m31",
-    #     "naht_results/5v6/open_train/poam-pqvmq_open"
-    # ]}, 
-    # {
-    # "8v9": [
-    #     "naht_results/8v9/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_vc_m120",
-    #     "naht_results/8v9/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.0_eps0.2_vc_m120",
-    #     "naht_results/8v9/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.0_sl0.001_eps0.2_vc_m120",
-    #     "naht_results/8v9/open_train/poam_banzhaf_truncate_Lam0.95_vl0.5_eps0.2_vc_m120",
-    #     "naht_results/8v9/open_train/poam-pqvmq_open"
-    # ]}, 
-    # {
-    # "10v11": [
-    #     "naht_results/10v11/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_vc_m150",
-    #     "naht_results/10v11/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.0_eps0.2_vc_m150",
-    #     "naht_results/10v11/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.0_sl0.001_eps0.2_vc_m150",
-    #     "naht_results/10v11/open_train/poam_banzhaf_truncate_Lam0.95_vl0.5_eps0.2_vc_m150",
-    #     "naht_results/10v11/open_train/poam-pqvmq_open"
-    # ]}, 
-    {
-    "3sv5z": [
-        "naht_results/3sv5z/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7",
-        "naht_results/3sv5z/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.0_eps0.2_m7",
-        "naht_results/3sv5z/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.0_sl0.01_eps0.2_m7",
-        "naht_results/3sv5z/open_train/poam_banzhaf_truncate_Lam0.85_vl0.5_eps0.2_m7",
-        "naht_results/3sv5z/open_train/poam-pqvmq_open"
-    ]}, 
-    "./plots")
+configs = [
+    ({
+    "mpe-pp": [
+        "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m7",
+        "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m3",
+        "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.01_eps0.2_m14",
+        "naht_results/mpe-pp/open_train/poam_shapley1_truncate_Lam0.99_vl0.5_sr0.01_sl0.01_eps0.2_m100",
+    ],
+    "5v6":[
+        "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.2_avg_m31",
+        "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.85_vl0.5_sr0.01_sl0.001_eps0.1_avg_m20",
+        "naht_results/5v6/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_m70",
+    ],
+    "8v9": [
+        "naht_results/8v9/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_vc_m120",
+        "naht_results/8v9/open_train/poam_shapley1_truncate_Lam0.95_vl0.5_sr0.01_sl0.001_eps0.2_vc_m20",
+    ],
+    }, "./plots-naht")
 ]
-     
-# mode = "ab-5v6"
-# mode = "ab-8v9"
-# mode = "ab-10v11"
-mode = "ab-3sv5z"
 
-# scalar tags
+mode = "m"
 
 ema_alpha = 1 - 0.95
 
 def smooth_dataframe(df, y_col="mean", ema_alpha=0.3):
     """
-    对每个 method 的指定列进行 EMA 平滑。
-    ema_alpha 越小，平滑效果越强。
+    Apply EMA smoothing to the specified column for each method.
+    A smaller ema_alpha produces stronger smoothing.
     """
     return (
         df.sort_values("step")
@@ -75,7 +46,7 @@ def smooth_dataframe(df, y_col="mean", ema_alpha=0.3):
           .reset_index(drop=True)
     )
 
-# --------- 工具函数 ---------
+# --------- Utility functions ---------
 def find_all_event_files(tb_log_dir):
     if not os.path.isdir(tb_log_dir):
         return []
@@ -105,17 +76,15 @@ def extract_scalar_data(event_file, tags):
 from scipy.interpolate import interp1d
 def interpolate_seeds(df, step_range, kind="nearest"):
     """
-    对每个 method + seed 曲线插值到统一 step
+    Interpolate each method-and-seed curve onto a common step range.
     kind: 'linear', 'nearest', 'cubic', 'quadratic'...
     """
     all_interp = []
 
     for (method, seed), group in df.groupby(["method", "seed"]):
-        # if ('112358' in seed) or ('112361' in seed):
-        #     continue
         group = group.sort_values("step")
         if len(group) < 2:
-            continue  # 无法插值
+            continue  # Insufficient data for interpolation
 
         try:
             interp_func = interp1d(
@@ -123,11 +92,11 @@ def interpolate_seeds(df, step_range, kind="nearest"):
                 group["value"],
                 kind=kind,
                 bounds_error=False,
-                fill_value=np.nan  # 避免外推
+                fill_value=np.nan  # Avoid extrapolation
             )
             interp_vals = interp_func(step_range)
         except ValueError:
-            # 比如 cubic 插值点太少会失败
+            # Cubic interpolation, for example, fails with too few points.
             continue
 
         interp_df = pd.DataFrame({
@@ -142,7 +111,6 @@ def interpolate_seeds(df, step_range, kind="nearest"):
 
 
 sns.set(style="darkgrid")
-rcParams['font.weight'] = 'bold'
 
 scalar_tags = {
     "test_return": "test_return_mean",
@@ -228,10 +196,10 @@ def print_table(df):
 for experiment_config,output_dir in configs:
     
     os.makedirs(output_dir, exist_ok=True)
-    fig, axes = plt.subplots(1, 1, figsize=(5, 5)) 
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5)) 
     i = 0
     for map_name, paths in experiment_config.items():
-        ax = axes  # 每次使用一个子图
+        ax = axes[i]  # Use one subplot for each environment
         i += 1
         print(f"\n📍 Processing environment: {map_name}")
         data_by_plot = {key: [] for key in scalar_tags}
@@ -245,8 +213,10 @@ for experiment_config,output_dir in configs:
                 print(f"⚠️  No event files found in {path}")
                 continue
             print(f"load {len(event_files)} event_files....")
-            # print(event_files)
             for ef in event_files:
+                if "banzhaf" in ef:
+                    print(f"⚠️  Skip event file: {ef}")
+                    continue
                 scalar_data = extract_scalar_data(ef, list(scalar_tags.values()))
                 for key, tag in scalar_tags.items():
                     for step, value in scalar_data.get(tag, []):
@@ -275,43 +245,68 @@ for experiment_config,output_dir in configs:
                 print(f"❌ No data found for {key} in {map_name}")
                 continue
 
-            # === 对齐所有曲线 ===
+            # === Align all curves ===
             step_min = int(df["step"].min())
             step_max = int(df["step"].max())
             step_interval = int((step_max + 1 - step_min) / 400)
             step_range = np.arange(step_min, step_max + 1, step_interval)
 
             df_interp = interpolate_seeds(df, step_range)
-            # df_interp.to_csv("interpolated_data.csv", index=False)
 
-            # === 平滑处理 ===
+            # === Apply smoothing ===
             df_interp_smooth = smooth_dataframe(df_interp, y_col="value", ema_alpha=ema_alpha)
-            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_banzhaf'), 'method'] = '$\\alpha=0,\\beta_2=0$'
-            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_open'), 'method'] = 'POAM'
-
-            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.01'), 'method'] = '$\\alpha=0.01,\\beta_2=0.01$'
-            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.0'), 'method'] = '$\\alpha=0.01,\\beta_2=0$'
-            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.0_sl0.01'), 'method'] = '$\\alpha=0,\\beta_2=0.01$'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m20'), 'method'] = 'm=20'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m70'), 'method'] = 'm=70'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m31'), 'method'] = 'm=31'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m7'), 'method'] = 'm=7'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m3'), 'method'] = 'm=3'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m14'), 'method'] = 'm=14'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m100'), 'method'] = 'm=100'
+            df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_m120'), 'method'] = 'm=120'
             
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.001'), 'method'] = '$\\alpha=0.01,\\beta_2=0.001$'
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.0'), 'method'] = '$\\alpha=0.01,\\beta_2=0$'
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.0_sl0.001'), 'method'] = '$\\alpha=0,\\beta_2=0.001$'
-
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.001'), 'method'] = '$\\alpha=0.002,\\beta_2=0.001$'
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.01_sl0.0'), 'method'] = '$\\alpha=0.002,\\beta_2=0$'
-            # df_interp_smooth.loc[df_interp_smooth['method'].str.contains('_sr0.0_sl0.001'), 'method'] = '$\\alpha=0,\\beta_2=0.001$'
+            # === Set legend order according to the configured path order ===
+            # Extract m values from the configured paths while preserving their order.
+            ordered_methods = []
+            for path in paths:
+                method_name = os.path.basename(path)
+                if '_m20' in method_name:
+                    ordered_methods.append('m=20')
+                elif '_m70' in method_name:
+                    ordered_methods.append('m=70')
+                elif '_m31' in method_name:
+                    ordered_methods.append('m=31')
+                elif '_m7' in method_name:
+                    ordered_methods.append('m=7')
+                elif '_m3' in method_name:
+                    ordered_methods.append('m=3')
+                elif '_m14' in method_name:
+                    ordered_methods.append('m=14')
+                elif '_m100' in method_name:
+                    ordered_methods.append('m=100')
+                elif '_m150' in method_name:
+                    ordered_methods.append('m=150')
+                elif '_m120' in method_name:
+                    ordered_methods.append('m=120')
+            
+            # Remove duplicates while preserving order.
+            hue_order = []
+            for method in ordered_methods:
+                if method not in hue_order:
+                    hue_order.append(method)
+            
+            
             
             # print(df_interp_smooth)
             print_table(df_interp_smooth)
-
             sns.lineplot(
                 data=df_interp_smooth,
                 x="step",
                 y="smoothed",
                 hue="method",
+                hue_order=hue_order,  # Use the order defined in the configuration
                 errorbar=('ci', 95),     # std deviation
-                estimator="mean",  # 求 mean
-                err_style="band",  # 默认就是带状阴影
+                estimator="mean",  # Compute the mean
+                err_style="band",  # Display uncertainty as a shaded band
                 linewidth=2,
                 ax=ax
             )
@@ -321,27 +316,24 @@ for experiment_config,output_dir in configs:
             ax.set_xlim([0, 2e7])
             if 'return' in key:
                 if map_name == "mpe-pp":
-                    ax.set_ylabel('Mean Test Return', fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
-                elif map_name == "5v6":  
-                    ax.set_ylabel('Mean Win Rate', fontsize=fontsize, fontdict={'weight': 'bold'}, color='black') 
+                    ax.set_ylabel('Mean Test Return', fontsize=fontsize, color='black')
                 else:
                     ax.set_ylabel(None)
                 ax.legend(title=None, loc="lower right", prop={'size': fontsize})
-                ax.set_title(map_name, fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
-                ax.set_xlabel("Timesteps", fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
+                ax.set_title(map_name, fontsize=fontsize, color='black')
+                ax.set_xlabel("Timesteps", fontsize=fontsize, color='black')
             elif 'winrate' in key:
                 if map_name == "5v6":
-                    ax.set_ylabel('Mean Win Rate', fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
-                    ax.legend(title=None, loc="lower right", prop={'size': 16})
+                    ax.set_ylabel('Mean Test Winrate', fontsize=fontsize, color='black')
                 else:   
                     ax.set_ylabel(None)
-                    ax.legend(title=None, loc="lower right", prop={'size': fontsize})
-                ax.set_title(map_name, fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
-                ax.set_xlabel("Timesteps", fontsize=fontsize, fontdict={'weight': 'bold'}, color='black')
+                ax.legend(title=None, loc="lower right", prop={'size': fontsize})
+                ax.set_title(map_name, fontsize=fontsize, color='black')
+                ax.set_xlabel("Timesteps", fontsize=fontsize, color='black')
 
     plt.tight_layout()
 
-    save_path = os.path.join(output_dir, f"main_{mode}.png")
+    save_path = os.path.join(output_dir, f"main_{mode}.pdf")
     plt.savefig(save_path, dpi=600, bbox_inches='tight')
     plt.close(fig)
     print(f"✅ Saved: {save_path}")
