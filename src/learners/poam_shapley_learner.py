@@ -105,7 +105,7 @@ class POAMShapleyLearner:
         # give actor critic access to encoder/decoder
         if isinstance(self.mac, AgentOwnedMAC):
             self.mac.agent.encoder = self.encoder
-        elif isinstance(self.mac, (OpenTrainMAC, OpenTrainSpecMAC, OpenTrainMAC21)):
+        elif isinstance(self.mac, (OpenTrainMAC, OpenTrainSpecMAC)):
         # elif isinstance(self.mac, OpenTrainMAC):
             self.mac.set_encoder(self.encoder)
         else:
