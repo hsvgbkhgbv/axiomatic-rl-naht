@@ -291,8 +291,8 @@ PYTHONPATH=src python src/ood_figure_type.py
 
 The figure is saved as `plots-naht/5trials-95ci/type-ood-poam.pdf` by default. Use this after running `nk_evaluation.py` with `dest_results_name` pointing at the type-generalization split.
 
-## Empirical Verificaiton for Assumption E.2
-In our paper, the fundation to make our theoretical framework valid is Assumtion E.2. To prove its reasonableness, we design an experiment by changing the configs of existing experiments on the `5v6` task of `SC2`. Run the following scripts for SM-POAM:
+## Empirical Verificaiton for Assumption E.3
+In our paper, the fundation to make our theoretical framework valid is Assumtion E.3. To prove its reasonableness, we design an experiment by changing the configs of existing experiments on the `5v6` task of `SC2`. Run the following scripts for SM-POAM:
 ```
 python src/main.py --env-config=sc2 --config=open/open_train_5v6 --alg-config=sc2/poam_shapley with env_args.map_name=5m_vs_6m shapley_loss_coef=0.001 shaped_reward_coef=0.01 eps_clip=0.2 entropy_coef=0.05 truncated_TD_lambda=True m=31 value_loss_coef=0.5 gae_lambda=0.85 --local_results_path=5v6/open_train/poam_shapley_expA --seed=[SEED]
 ```
