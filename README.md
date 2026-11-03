@@ -1,19 +1,6 @@
-# Axiomatic Reinforcement Learning for Open Multi-Agent Systems from Shapley Axioms
+# An Axiomatic Framework for Reinforcement Learning in Open Multi-Agent Systems
 
-This is the code release for the paper, [Axiomatic Reinforcement Learning for Open Multi-Agent Systems from Shapley Axioms](https://arxiv.org/abs/2506.11285). If you find the code or paper useful for your work, please cite: 
-
-```bibtex
-@misc{wang2025shapleymachinegametheoreticframework,
-      title={Shapley Machine: A Game-Theoretic Framework for N-Agent Ad Hoc Teamwork}, 
-      author={Jianhong Wang and Yang Li and Samuel Kaski and Jonathan Lawry},
-      year={2025},
-      eprint={2506.11285},
-      archivePrefix={arXiv},
-      primaryClass={cs.MA},
-      url={https://arxiv.org/abs/2506.11285}, 
-}
-```
-This codebase was built on top of the [NAHT](https://github.com/carolinewang01/naht) codebase.
+This is the code release for the paper, [An Axiomatic Framework for Reinforcement Learning in Open Multi-Agent Systems](https://arxiv.org/abs/2611.03301). This codebase was built on top of the [NAHT](https://github.com/carolinewang01/naht) codebase.
 
 The following additions and modifications were made by us: 
 - Implementation of Shapley Machine / Banzhaf Machine, the approaches proposed in the paper, in the files `src/learners/poam_shapley_learner.py` and `src/learners/ppo_shapley_learner.py`. `src/learners/poam_shapley_learner.py` indicates SM-POAM / BM-POAM, while `src/learners/ppo_shapley_learner.py` indicates SM-IPPO / BM-IPPO
@@ -371,3 +358,19 @@ Some notes about the task configs:
 - `src/config/open/open_algs_<task>.yaml`: 
     - Check that the checkpoint paths for each desired teammate type are correct (under `uncntrl_agents`). Paths should be relative to the `base_uncntrl_agents` specified in `src/config/user_info.yaml`
     - If running Shapley Machine and POAM, set `agent_loader` to `poam_train_agent_loader`. Else, set `agent_loader` to `rnn_train_agent_loader`
+
+# Citation
+
+If you find the code or paper useful for your work, please cite: 
+
+```bibtex
+@misc{wang2026axiomaticframeworkreinforcementlearning,
+      title={An Axiomatic Framework for Reinforcement Learning in Open Multi-Agent Systems}, 
+      author={Jianhong Wang and Yang Li and Samuel Kaski and Jonathan Lawry},
+      year={2026},
+      eprint={2611.03301},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2611.03301}, 
+}
+```
